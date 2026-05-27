@@ -6,18 +6,17 @@
     <title>Admin Portal | SKILLS Gym Rental</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: {
-                            blueStart: '#007bff',
-                            blueEnd: '#00d2ff',
-                            orangeStart: '#ff8c00',
-                            orangeEnd: '#e65100',
-                            formBlue: '#3b82f6'
+                        primary: { 
+                            blueStart: '#007bff', 
+                            blueEnd: '#00d2ff', 
+                            orangeStart: '#ff8c00', 
+                            orangeEnd: '#e65100', 
+                            formBlue: '#3b82f6' 
                         }
                     }
                 }
@@ -31,12 +30,11 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('appData', () => ({
                 sidebarOpen: false,
-                currentView: 'calendar', // 'dashboard', 'calendar', or 'new-booking'
-                
-                currentDate: new Date().toISOString().split('T')[0],
+                currentView: 'dashboard', 
                 isLoading: false,
-                
-                // NEW: Structured Time Blocks for intervals and backend mapping
+                currentDate: new Date().toISOString().split('T')[0],
+
+                // Full Time Blocks with start/end strings for data attributes
                 timeBlocks: [
                     { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
                     { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
@@ -56,126 +54,155 @@
                     { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
                 
+                // Form State
+                bookingForm: { fullName: '', email: '', court: 'Court 1', date: new Date().toISOString().split('T')[0] },
+                
+                // --- GOOGLE SHEETS WEB APP URL ---
+                // Paste your specific Apps Script URL here!
+                scriptURL: 'https://script.google.com/macros/s/AKfycbxpXafMPD75uGyHd2l9tux1Y_CjBmtuRUrk1OE51_z9NkQ5nMRfmIlXFzWaENJUR6Mt/exec',
+
+                // Mock Data Logic for visualizing booked slots on the calendar
                 getBookingData(block, court) {
                     const dateHash = this.currentDate.charCodeAt(this.currentDate.length - 1);
-                    
                     if (dateHash % 2 === 0) {
                         if (block.queryTime === '8:00 AM' && court === 'Court 2') return { booked: true, title: 'PE Training' };
                         if (block.queryTime === '5:00 PM' && court === 'Court 1') return { booked: true, title: 'Varsity Practice' };
-                        if (block.queryTime === '6:00 PM' && court === 'Court 3') return { booked: true, title: 'Corporate Liga' };
                     } else {
                         if (block.queryTime === '9:00 AM' && court === 'Court 1') return { booked: true, title: 'Basketball Clinic' };
-                        if (block.queryTime === '1:00 PM' && court === 'Court 3') return { booked: true, title: 'Maintenance' };
-                        if (block.queryTime === '7:00 PM' && court === 'Court 2') return { booked: true, title: 'Volleyball League' };
                     }
                     return { booked: false };
                 },
 
+                // Calendar Navigation
                 changeDay(offset) {
                     this.isLoading = true;
                     let dateObj = new Date(this.currentDate);
                     dateObj.setDate(dateObj.getDate() + offset);
                     this.currentDate = dateObj.toISOString().split('T')[0];
-                    setTimeout(() => { this.isLoading = false; }, 500);
+                    setTimeout(() => { this.isLoading = false; }, 400);
                 },
 
                 fetchAvailabilityForDate(date) {
                     this.isLoading = true;
                     this.currentDate = date;
-                    setTimeout(() => { this.isLoading = false; }, 500);
+                    setTimeout(() => { this.isLoading = false; }, 400);
                 },
 
-                // NEW: Logic handler for when an admin clicks an empty time slot
+                // Triggers when admin clicks an empty calendar slot
                 handleCellClick(court, block) {
-                    console.log('--- CAPTURED BOOKING INTENT ---');
-                    console.log(`Target Date:  ${this.currentDate}`);
-                    console.log(`Target Court: ${court}`);
-                    console.log(`Start Time:   ${block.start}`);
-                    console.log(`End Time:     ${block.end}`);
-                    console.log(`Interval:     ${block.label}`);
-                    
-                    // Proceed to switch views. Later, we can bind these variables to the form automatically.
+                    console.log(`Booking Intent: ${court} on ${this.currentDate} at ${block.start}`);
+                    this.bookingForm.court = court;
+                    this.bookingForm.date = this.currentDate;
                     this.currentView = 'new-booking';
+                },
+
+                // Modern Toast Animation
+                showToast() {
+                    const toast = document.getElementById('toast');
+                    toast.classList.remove('translate-y-20', 'opacity-0');
+                    toast.classList.add('translate-y-0', 'opacity-100');
+                    setTimeout(() => { 
+                        toast.classList.remove('translate-y-0', 'opacity-100'); 
+                        toast.classList.add('translate-y-20', 'opacity-0'); 
+                    }, 3000);
+                },
+
+                // Submits the data to Google Sheets
+                async submitBooking() {
+                    if(!this.bookingForm.fullName || !this.bookingForm.email) { 
+                        alert("Please fill in both Full Name and Email."); 
+                        return; 
+                    }
+                    
+                    this.isLoading = true;
+                    try {
+                        // Using 'no-cors' mode because we are calling Google from GitHub Pages
+                        await fetch(this.scriptURL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(this.bookingForm)
+                        });
+                        
+                        this.showToast();
+                        
+                        // Clear the form fields
+                        this.bookingForm.fullName = '';
+                        this.bookingForm.email = '';
+                        this.bookingForm.court = 'Court 1';
+                        this.bookingForm.date = new Date().toISOString().split('T')[0];
+                        
+                        // Return to the dashboard
+                        this.currentView = 'dashboard';
+                    } catch (error) {
+                        console.error(error);
+                        alert("Failed to connect to the database. Please check your URL.");
+                    } finally {
+                        this.isLoading = false;
+                    }
                 }
             }))
         })
     </script>
     
     <style>
-        .form-input {
-            @apply block w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-blueStart sm:text-sm sm:leading-6 px-3;
-        }
-        .form-label {
-            @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1;
-        }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-        }
-        input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
-        }
+        .form-input { @apply block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-blueStart sm:text-sm sm:leading-6 px-3; }
+        .form-label { @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5; }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; transition: opacity 0.2s; }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     </style>
 </head>
 <body class="bg-[#f0f4f8] text-gray-800 font-sans antialiased" x-data="appData">
 
     <div class="flex h-screen overflow-hidden">
-
-        <div x-show="sidebarOpen" class="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden" @click="sidebarOpen = false"></div>
-
-        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-30 w-64 bg-gradient-to-b from-primary-blueStart to-primary-blueEnd text-white transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0">
-            <div class="flex items-center justify-center h-20 border-b border-white/20">
+        
+        <aside class="w-64 bg-gradient-to-b from-primary-blueStart to-primary-blueEnd text-white flex flex-col z-20">
+            <div class="flex items-center justify-center h-20 border-b border-white/20 shadow-sm">
                 <h1 class="text-2xl font-bold tracking-wider">SKILLS ADMIN</h1>
             </div>
-            
             <nav class="p-4 space-y-2">
-                <a href="#" @click.prevent="currentView = 'dashboard'; sidebarOpen = false" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all">
+                <a href="#" @click.prevent="currentView = 'dashboard'" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     Dashboard
                 </a>
-                <a href="#" @click.prevent="currentView = 'calendar'; sidebarOpen = false" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all">
+                <a href="#" @click.prevent="currentView = 'calendar'" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     Live Calendar
                 </a>
-                <a href="#" @click.prevent="currentView = 'new-booking'; sidebarOpen = false" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all">
+                <a href="#" @click.prevent="currentView = 'new-booking'" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     New Booking
                 </a>
             </nav>
         </aside>
 
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
-            <header class="bg-white shadow-sm h-20 flex items-center justify-between px-6 lg:px-10 z-10">
-                <button @click="sidebarOpen = true" class="text-gray-500 focus:outline-none lg:hidden">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
-                
-                <div class="hidden lg:block">
-                    <h2 class="text-xl font-semibold text-gray-800" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : 'Booking Management')"></h2>
-                </div>
+            <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center" style="display: none;">
+                <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm font-bold text-gray-600 tracking-wide">Processing...</span>
+            </div>
 
-                <div class="flex items-center space-x-6">
-                    <div class="flex items-center space-x-3 cursor-pointer">
-                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=007bff&color=fff" alt="Profile" class="w-10 h-10 rounded-full border-2 border-gray-200">
-                    </div>
+            <header class="bg-white shadow-sm h-20 flex items-center justify-between px-6 lg:px-10 z-10">
+                <h2 class="text-xl font-semibold text-gray-800" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : 'Booking Management')"></h2>
+                <div class="flex items-center space-x-3 cursor-pointer">
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=007bff&color=fff" alt="Profile" class="w-10 h-10 rounded-full border-2 border-gray-200">
                 </div>
             </header>
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-10">
                 
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <div class="flex justify-between items-center mb-8">
                         <p class="text-gray-600">Welcome back. Here is what's happening today.</p>
-                        <button @click="currentView = 'new-booking'" class="bg-gradient-to-r from-primary-orangeStart to-primary-orangeEnd hover:shadow-lg text-white px-6 py-2.5 rounded-lg font-medium shadow-md transition-all transform hover:-translate-y-0.5">
-                            + New Booking Walk-in
-                        </button>
+                        <button @click="currentView = 'new-booking'" class="bg-gradient-to-r from-primary-orangeStart to-primary-orangeEnd text-white px-6 py-2.5 rounded-lg font-medium shadow-md transition-all transform hover:-translate-y-0.5">+ New Booking Walk-in</button>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm font-medium text-gray-500 mb-1">Total Bookings (Month)</p>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Total Bookings</p>
                             <h3 class="text-3xl font-bold text-gray-800">142</h3>
                         </div>
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -186,54 +213,29 @@
                 </div>
 
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col h-full max-w-6xl mx-auto">
-                    
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <div class="flex items-center space-x-4 w-full md:w-auto">
-                            <div class="flex items-center bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1 md:flex-none">
-                                <button @click="changeDay(-1)" class="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-primary-blueStart transition-colors border-r border-gray-200 focus:outline-none">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                                </button>
-                                <input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none focus:ring-0 text-sm font-bold text-gray-700 cursor-pointer px-4 py-2 outline-none w-full md:w-auto text-center">
-                                <button @click="changeDay(1)" class="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-primary-blueStart transition-colors border-l border-gray-200 focus:outline-none">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                </button>
+                    <div class="flex justify-between items-center mb-6 gap-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <button @click="changeDay(-1)" class="px-3 py-2 text-gray-500 hover:bg-gray-50 border-r border-gray-200 focus:outline-none">&lt;</button>
+                                <input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none text-sm font-bold text-gray-700 px-4 py-2 text-center outline-none">
+                                <button @click="changeDay(1)" class="px-3 py-2 text-gray-500 hover:bg-gray-50 border-l border-gray-200 focus:outline-none">&gt;</button>
                             </div>
-                            <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-primary-blueStart hover:text-primary-blueEnd uppercase tracking-wider hidden sm:block">
-                                Today
-                            </button>
-                        </div>
-
-                        <div class="flex space-x-4 text-sm bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
-                            <div class="flex items-center"><span class="w-3 h-3 rounded bg-gray-100 border border-gray-300 mr-2"></span> Available</div>
-                            <div class="flex items-center"><span class="w-3 h-3 rounded bg-gradient-to-r from-primary-blueStart to-primary-blueEnd mr-2"></span> Booked</div>
+                            <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-primary-blueStart hover:text-primary-blueEnd uppercase tracking-wider">Today</button>
                         </div>
                     </div>
 
                     <div class="relative bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        
-                        <div x-show="isLoading" x-transition.opacity class="absolute inset-0 z-20 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center">
-                            <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span class="text-sm font-bold text-gray-600 tracking-wide">Syncing Schedule...</span>
-                        </div>
-
                         <div class="overflow-x-auto">
                             <div class="min-w-[740px]">
-                                
-                                <div class="grid grid-cols-[140px_1fr_1fr_1fr] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                                    <div class="p-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200 shadow-sm">Time</div>
-                                    <div class="p-4 text-center font-bold text-gray-800 border-r border-gray-200 shadow-sm">Court 1</div>
-                                    <div class="p-4 text-center font-bold text-gray-800 border-r border-gray-200 shadow-sm">Court 2</div>
-                                    <div class="p-4 text-center font-bold text-gray-800 shadow-sm">Court 3</div>
+                                <div class="grid grid-cols-[140px_1fr_1fr_1fr] bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                    <div class="p-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">Time</div>
+                                    <div class="p-4 text-center font-bold text-gray-800 border-r border-gray-200">Court 1</div>
+                                    <div class="p-4 text-center font-bold text-gray-800 border-r border-gray-200">Court 2</div>
+                                    <div class="p-4 text-center font-bold text-gray-800">Court 3</div>
                                 </div>
 
                                 <template x-for="block in timeBlocks" :key="block.start">
-                                    <div class="grid grid-cols-[140px_1fr_1fr_1fr] border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-                                         :data-start-time="block.start"
-                                         :data-end-time="block.end">
-                                        
+                                    <div class="grid grid-cols-[140px_1fr_1fr_1fr] border-b border-gray-100 hover:bg-gray-50 transition-colors group" :data-start-time="block.start" :data-end-time="block.end">
                                         <div class="p-4 text-[11px] font-medium text-gray-500 text-right border-r border-gray-200 flex items-center justify-end bg-gray-50/50" x-text="block.label"></div>
                                         
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
@@ -247,157 +249,68 @@
                                                 </template>
                                                 
                                                 <template x-if="!getBookingData(block, court).booked">
-                                                    <div class="h-full w-full rounded-md bg-transparent border border-transparent hover:border-gray-300 hover:bg-white transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 group-hover:bg-white" 
-                                                         @click="handleCellClick(court, block)">
+                                                    <div class="h-full w-full rounded-md bg-transparent border border-transparent hover:border-gray-300 hover:bg-white transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 group-hover:bg-white" @click="handleCellClick(court, block)">
                                                         <span class="text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity text-primary-orangeStart">+ Block Slot</span>
                                                     </div>
                                                 </template>
 
                                             </div>
                                         </template>
-
                                     </div>
                                 </template>
-
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
-                    
                     <h2 class="text-2xl font-bold text-[#0f2042] mb-6 tracking-tight">New Booking Entry</h2>
                     
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
-                        
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-8">
                             <div>
                                 <label class="form-label">Full Name</label>
-                                <input type="text" class="form-input" placeholder="Enter complete name">
-                            </div>
-                            <div>
-                                <label class="form-label">Organization Name</label>
-                                <input type="text" class="form-input" placeholder="Enter organization (Optional)">
+                                <input type="text" class="form-input" placeholder="Enter complete name" x-model="bookingForm.fullName">
                             </div>
                             <div>
                                 <label class="form-label">Email Address</label>
-                                <input type="email" class="form-input" placeholder="Enter email to send receipt">
-                            </div>
-                            <div>
-                                <label class="form-label">Home Address</label>
-                                <input type="text" class="form-input" placeholder="Enter complete home address">
-                            </div>
-                            <div>
-                                <label class="form-label">Type of ID</label>
-                                <select class="form-input text-gray-700">
-                                    <option>National ID</option>
-                                    <option>Driver's License</option>
-                                    <option>Passport</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">ID Number</label>
-                                <input type="text" class="form-input" placeholder="Enter ID number">
+                                <input type="email" class="form-input" placeholder="Enter email to send receipt" x-model="bookingForm.email">
                             </div>
                         </div>
 
                         <div class="border-t border-gray-100 my-6"></div>
 
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-4 relative">
-                            <button class="absolute top-4 right-4 text-xs font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors">
-                                Remove Slot
-                            </button>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-5 mt-2">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                 <div>
                                     <label class="form-label">Date of Event</label>
-                                    <input type="date" class="form-input text-gray-700" x-model="currentDate">
+                                    <input type="date" class="form-input text-gray-700" x-model="bookingForm.date">
                                 </div>
                                 <div>
-                                    <label class="form-label">Sport Type / Package</label>
-                                    <select class="form-input text-gray-700">
-                                        <option>Basketball</option>
-                                        <option>Volleyball</option>
-                                        <option>Badminton</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label text-transparent selection:text-transparent hidden md:block">Spacer</label>
-                                    <select class="form-input text-gray-700 mt-0 md:-mt-6">
-                                        <option disabled selected>Select Facility</option>
+                                    <label class="form-label">Facility</label>
+                                    <select class="form-input text-gray-700" x-model="bookingForm.court">
                                         <option>Court 1</option>
                                         <option>Court 2</option>
                                         <option>Court 3</option>
                                     </select>
                                 </div>
-                                
-                                <div class="col-span-1 md:col-span-3">
-                                    <label class="form-label">Remarks & Inclusions</label>
-                                    <input type="text" class="form-input" placeholder="Regular Game (Max 20).">
-                                </div>
-
-                                <div class="col-span-1 md:col-span-1 border-r border-transparent md:border-r-gray-200 md:pr-4">
-                                    <label class="form-label">Time Started</label>
-                                    <select class="form-input text-gray-500">
-                                        <option>Select start time...</option>
-                                    </select>
-                                </div>
-                                <div class="col-span-1 md:col-span-2">
-                                    <label class="form-label">Time Ended</label>
-                                    <select class="form-input text-gray-500 w-full md:w-1/2">
-                                        <option>Select end time...</option>
-                                    </select>
-                                </div>
                             </div>
                         </div>
 
-                        <button class="w-full py-3 mb-8 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 transition-colors flex justify-center items-center">
-                            + Add Another Booking Slot
-                        </button>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label class="form-label">Total Hours (All Slots)</label>
-                                <input type="text" class="form-input bg-gray-50" value="0" readonly>
-                            </div>
-                            <div>
-                                <label class="form-label">Total Base Amount (All Slots)</label>
-                                <input type="text" class="form-input bg-gray-50" value="0.00" readonly>
-                            </div>
-                        </div>
-
-                        <div class="border-2 border-dashed border-gray-200 rounded-lg p-5 mb-8">
-                            <label class="form-label mb-3">Additional Charges (Applied to entire transaction)</label>
-                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-xs font-bold text-gray-600 shadow-sm hover:bg-gray-50">
-                                + Add Charge/Remark
-                            </button>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="form-label">Grand Total Payable (PHP)</label>
-                            <div class="bg-[#f0f7ff] border border-blue-200 rounded-lg p-4">
-                                <span class="text-3xl font-black text-slate-800">0.00</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-8">
-                            <label class="form-label">Mode of Payment</label>
-                            <select class="form-input text-gray-700">
-                                <option>Cash</option>
-                                <option>GCash</option>
-                                <option>Bank Transfer</option>
-                            </select>
-                        </div>
-
-                        <button class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm transition-colors text-lg">
+                        <button @click="submitBooking()" class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm transition-colors text-lg flex justify-center items-center">
                             Save Complete Booking
                         </button>
-
                     </div>
                 </div>
 
             </main>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
+        <div class="bg-gradient-to-r from-primary-blueStart to-primary-blueEnd text-white px-6 py-4 rounded-lg shadow-xl flex items-center">
+            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="font-bold text-lg">Booking Saved Successfully!</span>
         </div>
     </div>
 
