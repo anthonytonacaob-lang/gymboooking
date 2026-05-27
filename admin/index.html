@@ -4,134 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal | SKILLS Gym Rental</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            blueStart: '#007bff',
-                            blueEnd: '#00d2ff',
-                            orangeStart: '#ff8c00',
-                            orangeEnd: '#e65100',
-                            formBlue: '#3b82f6'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('appData', () => ({
-                sidebarOpen: false,
-                currentView: 'dashboard',
+                sidebarOpen: false, 
+                currentView: 'dashboard', 
                 isLoading: false,
                 currentDate: new Date().toISOString().split('T')[0],
-
-                // Calendar Configuration
-                timeBlocks: [
-                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
-                    { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
-                    { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' },
-                    { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' },
-                    { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' },
-                    { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' },
-                    { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' },
-                    { label: '1:00 PM - 2:00 PM', start: '13:00', end: '14:00', queryTime: '1:00 PM' },
-                    { label: '2:00 PM - 3:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
-                    { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' },
-                    { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' },
-                    { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' },
-                    { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' },
-                    { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' },
-                    { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' },
-                    { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
-                ],
-                
-                getBookingData(block, court) { return { booked: false }; },
-
-                changeDay(offset) {
-                    this.isLoading = true;
-                    let dateObj = new Date(this.currentDate);
-                    dateObj.setDate(dateObj.getDate() + offset);
-                    this.currentDate = dateObj.toISOString().split('T')[0];
-                    setTimeout(() => { this.isLoading = false; }, 500);
-                },
-
-                fetchAvailabilityForDate(date) {
-                    this.isLoading = true;
-                    this.currentDate = date;
-                    setTimeout(() => { this.isLoading = false; }, 500);
-                },
-
-                handleCellClick(court, block) {
-                    this.bookingForm.court = court;
-                    this.bookingForm.date = this.currentDate;
-                    this.currentView = 'new-booking';
-                },
-
-                // --- GOOGLE SHEETS DATABASE ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbynGKeGSiFtANBec5JPg8qIq4IJ6TvVUpR6qFqzHTL0Q3ZAmJW5IYa9BQJFuMIvVJac5w/exec',
                 bookingForm: { fullName: '', email: '', court: 'Court 1', date: new Date().toISOString().split('T')[0] },
-
-                showToast() {
-                    const toast = document.getElementById('toast');
-                    toast.classList.remove('translate-y-20', 'opacity-0');
-                    toast.classList.add('translate-y-0', 'opacity-100');
-                    setTimeout(() => {
-                        toast.classList.remove('translate-y-0', 'opacity-100');
-                        toast.classList.add('translate-y-20', 'opacity-0');
-                    }, 3000);
-                },
-
+                
                 async submitBooking() {
-                    if(!this.bookingForm.fullName) { alert("Please enter a Full Name."); return; }
+                    if(!this.bookingForm.fullName) { alert("Enter a Name"); return; }
                     this.isLoading = true;
                     try {
-                        await fetch(this.scriptURL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(this.bookingForm)
-                        });
-                        this.showToast();
-                        this.bookingForm.fullName = '';
+                        await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(this.bookingForm) });
+                        this.bookingForm.fullName = ''; 
                         this.bookingForm.email = '';
                         this.currentView = 'dashboard';
-                    } catch (error) { alert("Failed to connect to the Google Sheet."); }
+                        alert("Booking Successfully");
+                    } catch (e) { alert("Error connecting to sheet."); }
                     finally { this.isLoading = false; }
                 }
             }))
         })
     </script>
-    
-    <style>
-        .form-input { @apply block w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-blueStart sm:text-sm sm:leading-6 px-3; }
-        .form-label { @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1; }
-    </style>
 </head>
-<body class="bg-[#f0f4f8] text-gray-800 font-sans antialiased" x-data="appData">
+<body class="bg-gray-100 h-screen overflow-hidden" x-data="appData">
+    <div class="flex h-full">
+        <aside class="w-64 bg-blue-600 text-white p-6 flex flex-col">
+            <h1 class="text-xl font-bold mb-8">SKILLS ADMIN</h1>
+            <nav class="space-y-4">
+                <a href="#" @click="currentView='dashboard'" class="block p-3 bg-white/20 rounded">Dashboard</a>
+                <a href="#" @click="currentView='calendar'" class="block p-3 hover:bg-white/10 rounded">Live Calendar</a>
+                <a href="#" @click="currentView='new-booking'" class="block p-3 hover:bg-white/10 rounded">New Booking</a>
+            </nav>
+        </aside>
 
-    <div class="flex h-screen overflow-hidden">
-        <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-10 relative">
-            <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center" style="display: none;">
-                <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-sm font-bold text-gray-600 tracking-wide">Processing...</span>
+        <main class="flex-1 p-10 overflow-y-auto">
+            <div x-show="isLoading" class="fixed inset-0 bg-white/50 flex items-center justify-center z-50">Processing...</div>
+
+            <div x-show="currentView === 'dashboard'">
+                <h2 class="text-2xl font-bold mb-4">Dashboard Overview</h2>
+                <p>Welcome back, Admin.</p>
             </div>
 
-            </main>
-    </div>
+            <div x-show="currentView === 'calendar'">
+                <h2 class="text-2xl font-bold mb-4">Live Facility Calendar</h2>
+                <div class="bg-white p-6 rounded shadow">Calendar Grid will appear here.</div>
+            </div>
 
-    <div id="toast" class="fixed bottom-5 right-5 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
-        <div class="bg-gradient-to-r from-primary-blueStart to-primary-blueEnd text-white px-6 py-4 rounded-lg shadow-xl flex items-center">
-            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span class="font-bold text-lg">Booking Successfully</span>
-        </div>
+            <div x-show="currentView === 'new-booking'">
+                <h2 class="text-2xl font-bold mb-6">New Booking Entry</h2>
+                <div class="bg-white p-8 rounded shadow max-w-2xl">
+                    <input x-model="bookingForm.fullName" placeholder="Full Name" class="border p-3 w-full mb-4 rounded">
+                    <input x-model="bookingForm.email" placeholder="Email Address" class="border p-3 w-full mb-4 rounded">
+                    <button @click="submitBooking()" class="bg-blue-600 text-white p-3 w-full rounded font-bold hover:bg-blue-700">Save Complete Booking</button>
+                </div>
+            </div>
+        </main>
     </div>
 </body>
 </html>
