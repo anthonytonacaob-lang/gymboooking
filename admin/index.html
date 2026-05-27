@@ -30,13 +30,13 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('appData', () => ({
+                // --- UI STATE ---
                 sidebarOpen: false,
-                currentView: 'calendar', // 'dashboard', 'calendar', or 'new-booking'
-                
+                currentView: 'dashboard', // Controls which screen is currently visible
+                isLoading: false,         // Controls the loading spinner
                 currentDate: new Date().toISOString().split('T')[0],
-                isLoading: false,
-                
-                // NEW: Structured Time Blocks for intervals and backend mapping
+
+                // --- CALENDAR DATA ---
                 timeBlocks: [
                     { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
                     { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
@@ -56,9 +56,9 @@
                     { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
                 
+                // Mocks database data for the calendar visualization
                 getBookingData(block, court) {
                     const dateHash = this.currentDate.charCodeAt(this.currentDate.length - 1);
-                    
                     if (dateHash % 2 === 0) {
                         if (block.queryTime === '8:00 AM' && court === 'Court 2') return { booked: true, title: 'PE Training' };
                         if (block.queryTime === '5:00 PM' && court === 'Court 1') return { booked: true, title: 'Varsity Practice' };
@@ -71,6 +71,7 @@
                     return { booked: false };
                 },
 
+                // Calendar Navigation Logic
                 changeDay(offset) {
                     this.isLoading = true;
                     let dateObj = new Date(this.currentDate);
@@ -85,29 +86,79 @@
                     setTimeout(() => { this.isLoading = false; }, 500);
                 },
 
-                // NEW: Logic handler for when an admin clicks an empty time slot
                 handleCellClick(court, block) {
-                    console.log('--- CAPTURED BOOKING INTENT ---');
-                    console.log(`Target Date:  ${this.currentDate}`);
-                    console.log(`Target Court: ${court}`);
-                    console.log(`Start Time:   ${block.start}`);
-                    console.log(`End Time:     ${block.end}`);
-                    console.log(`Interval:     ${block.label}`);
-                    
-                    // Proceed to switch views. Later, we can bind these variables to the form automatically.
-                    this.currentView = 'new-booking';
+                    // Pre-fill the form with the clicked slot's data (will implement fully later)
+                    this.bookingForm.court = court;
+                    this.bookingForm.date = this.currentDate;
+                    this.currentView = 'new-booking'; // Switch to the booking form
+                },
+
+                // --- GOOGLE SHEETS DATABASE CONNECTION ---
+                
+                // TODO: Replace this placeholder with your real Apps Script Web App URL!
+                scriptURL: 'https://script.google.com/macros/s/AKfycbynGKeGSiFtANBec5JPg8qIq4IJ6TvVUpR6qFqzHTL0Q3ZAmJW5IYa9BQJFuMIvVJac5w/exec',
+
+                // The object holding the data from the HTML form
+                bookingForm: {
+                    fullName: '',
+                    email: '',
+                    court: 'Court 1',
+                    date: new Date().toISOString().split('T')[0]
+                },
+
+                // Triggers when the admin clicks "Save Complete Booking"
+                async submitBooking() {
+                    // Basic Form Validation
+                    if(!this.bookingForm.fullName) {
+                        alert("Please enter a Full Name.");
+                        return;
+                    }
+
+                    this.isLoading = true;
+
+                    try {
+                        // Send data to Google Sheets
+                        const response = await fetch(this.scriptURL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(this.bookingForm)
+                        });
+
+                        const result = await response.json();
+
+                        if(result.status === 'success') {
+                            alert("Booking successfully saved to Google Sheets!");
+                            
+                            // Reset the form
+                            this.bookingForm.fullName = '';
+                            this.bookingForm.email = '';
+                            
+                            // Return to dashboard
+                            this.currentView = 'dashboard';
+                        } else {
+                            alert("Error saving: " + result.message);
+                        }
+                    } catch (error) {
+                        console.error('Connection Error:', error.message);
+                        alert("Failed to connect to the Google Sheet.");
+                    } finally {
+                        this.isLoading = false;
+                    }
                 }
             }))
         })
     </script>
     
     <style>
+        /* Form Element Styles */
         .form-input {
             @apply block w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-blueStart sm:text-sm sm:leading-6 px-3;
         }
         .form-label {
             @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1;
         }
+        
+        /* Date Picker Customization */
         input[type="date"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
             opacity: 0.6;
@@ -163,8 +214,16 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-10">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-10 relative">
                 
+                <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center" style="display: none;">
+                    <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm font-bold text-gray-600 tracking-wide">Processing...</span>
+                </div>
+
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                         <p class="text-gray-600">Welcome back. Here is what's happening today.</p>
@@ -210,15 +269,6 @@
                     </div>
 
                     <div class="relative bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        
-                        <div x-show="isLoading" x-transition.opacity class="absolute inset-0 z-20 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center">
-                            <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span class="text-sm font-bold text-gray-600 tracking-wide">Syncing Schedule...</span>
-                        </div>
-
                         <div class="overflow-x-auto">
                             <div class="min-w-[740px]">
                                 
@@ -262,7 +312,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
@@ -274,7 +323,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-8">
                             <div>
                                 <label class="form-label">Full Name</label>
-                                <input type="text" class="form-input" placeholder="Enter complete name">
+                                <input type="text" class="form-input" placeholder="Enter complete name" x-model="bookingForm.fullName">
                             </div>
                             <div>
                                 <label class="form-label">Organization Name</label>
@@ -282,37 +331,21 @@
                             </div>
                             <div>
                                 <label class="form-label">Email Address</label>
-                                <input type="email" class="form-input" placeholder="Enter email to send receipt">
+                                <input type="email" class="form-input" placeholder="Enter email to send receipt" x-model="bookingForm.email">
                             </div>
                             <div>
                                 <label class="form-label">Home Address</label>
                                 <input type="text" class="form-input" placeholder="Enter complete home address">
-                            </div>
-                            <div>
-                                <label class="form-label">Type of ID</label>
-                                <select class="form-input text-gray-700">
-                                    <option>National ID</option>
-                                    <option>Driver's License</option>
-                                    <option>Passport</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">ID Number</label>
-                                <input type="text" class="form-input" placeholder="Enter ID number">
                             </div>
                         </div>
 
                         <div class="border-t border-gray-100 my-6"></div>
 
                         <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-4 relative">
-                            <button class="absolute top-4 right-4 text-xs font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors">
-                                Remove Slot
-                            </button>
-
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-5 mt-2">
                                 <div>
                                     <label class="form-label">Date of Event</label>
-                                    <input type="date" class="form-input text-gray-700" x-model="currentDate">
+                                    <input type="date" class="form-input text-gray-700" x-model="bookingForm.date">
                                 </div>
                                 <div>
                                     <label class="form-label">Sport Type / Package</label>
@@ -324,29 +357,11 @@
                                 </div>
                                 <div>
                                     <label class="form-label text-transparent selection:text-transparent hidden md:block">Spacer</label>
-                                    <select class="form-input text-gray-700 mt-0 md:-mt-6">
-                                        <option disabled selected>Select Facility</option>
+                                    <select class="form-input text-gray-700 mt-0 md:-mt-6" x-model="bookingForm.court">
+                                        <option disabled>Select Facility</option>
                                         <option>Court 1</option>
                                         <option>Court 2</option>
                                         <option>Court 3</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-span-1 md:col-span-3">
-                                    <label class="form-label">Remarks & Inclusions</label>
-                                    <input type="text" class="form-input" placeholder="Regular Game (Max 20).">
-                                </div>
-
-                                <div class="col-span-1 md:col-span-1 border-r border-transparent md:border-r-gray-200 md:pr-4">
-                                    <label class="form-label">Time Started</label>
-                                    <select class="form-input text-gray-500">
-                                        <option>Select start time...</option>
-                                    </select>
-                                </div>
-                                <div class="col-span-1 md:col-span-2">
-                                    <label class="form-label">Time Ended</label>
-                                    <select class="form-input text-gray-500 w-full md:w-1/2">
-                                        <option>Select end time...</option>
                                     </select>
                                 </div>
                             </div>
@@ -355,31 +370,6 @@
                         <button class="w-full py-3 mb-8 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 transition-colors flex justify-center items-center">
                             + Add Another Booking Slot
                         </button>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label class="form-label">Total Hours (All Slots)</label>
-                                <input type="text" class="form-input bg-gray-50" value="0" readonly>
-                            </div>
-                            <div>
-                                <label class="form-label">Total Base Amount (All Slots)</label>
-                                <input type="text" class="form-input bg-gray-50" value="0.00" readonly>
-                            </div>
-                        </div>
-
-                        <div class="border-2 border-dashed border-gray-200 rounded-lg p-5 mb-8">
-                            <label class="form-label mb-3">Additional Charges (Applied to entire transaction)</label>
-                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-xs font-bold text-gray-600 shadow-sm hover:bg-gray-50">
-                                + Add Charge/Remark
-                            </button>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="form-label">Grand Total Payable (PHP)</label>
-                            <div class="bg-[#f0f7ff] border border-blue-200 rounded-lg p-4">
-                                <span class="text-3xl font-black text-slate-800">0.00</span>
-                            </div>
-                        </div>
 
                         <div class="mb-8">
                             <label class="form-label">Mode of Payment</label>
@@ -390,7 +380,7 @@
                             </select>
                         </div>
 
-                        <button class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm transition-colors text-lg">
+                        <button @click="submitBooking()" class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm transition-colors text-lg flex justify-center items-center">
                             Save Complete Booking
                         </button>
 
