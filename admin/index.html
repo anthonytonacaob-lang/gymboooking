@@ -11,13 +11,7 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: { 
-                            blueStart: '#007bff', 
-                            blueEnd: '#00d2ff', 
-                            orangeStart: '#ff8c00', 
-                            orangeEnd: '#e65100', 
-                            formBlue: '#3b82f6' 
-                        }
+                        primary: { blueStart: '#007bff', blueEnd: '#00d2ff', orangeStart: '#ff8c00', orangeEnd: '#e65100', formBlue: '#3b82f6' }
                     }
                 }
             }
@@ -34,7 +28,6 @@
                 isLoading: false,
                 currentDate: new Date().toISOString().split('T')[0],
 
-                // Full Time Blocks with start/end strings for data attributes
                 timeBlocks: [
                     { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
                     { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
@@ -54,26 +47,30 @@
                     { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
                 
-                // Form State
-                bookingForm: { fullName: '', email: '', court: 'Court 1', date: new Date().toISOString().split('T')[0] },
+                // Expanded Form State matching the new UI
+                bookingForm: { 
+                    fullName: '', organization: '', email: '', address: '',
+                    idType: 'National ID', idNumber: '',
+                    date: new Date().toISOString().split('T')[0], sportType: 'Basketball', court: 'Court 1',
+                    remarks: '', timeStart: '', timeEnd: '',
+                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
+                },
+
+                // Array to hold the data fetched from Google Sheets
+                masterList: [],
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
-                // Paste your specific Apps Script URL here!
-                scriptURL: 'https://script.google.com/macros/s/AKfycbxpXafMPD75uGyHd2l9tux1Y_CjBmtuRUrk1OE51_z9NkQ5nMRfmIlXFzWaENJUR6Mt/exec',
+                scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
 
                 // Mock Data Logic for visualizing booked slots on the calendar
                 getBookingData(block, court) {
                     const dateHash = this.currentDate.charCodeAt(this.currentDate.length - 1);
                     if (dateHash % 2 === 0) {
                         if (block.queryTime === '8:00 AM' && court === 'Court 2') return { booked: true, title: 'PE Training' };
-                        if (block.queryTime === '5:00 PM' && court === 'Court 1') return { booked: true, title: 'Varsity Practice' };
-                    } else {
-                        if (block.queryTime === '9:00 AM' && court === 'Court 1') return { booked: true, title: 'Basketball Clinic' };
                     }
                     return { booked: false };
                 },
 
-                // Calendar Navigation
                 changeDay(offset) {
                     this.isLoading = true;
                     let dateObj = new Date(this.currentDate);
@@ -88,15 +85,13 @@
                     setTimeout(() => { this.isLoading = false; }, 400);
                 },
 
-                // Triggers when admin clicks an empty calendar slot
                 handleCellClick(court, block) {
-                    console.log(`Booking Intent: ${court} on ${this.currentDate} at ${block.start}`);
                     this.bookingForm.court = court;
                     this.bookingForm.date = this.currentDate;
+                    this.bookingForm.timeStart = block.queryTime;
                     this.currentView = 'new-booking';
                 },
 
-                // Modern Toast Animation
                 showToast() {
                     const toast = document.getElementById('toast');
                     toast.classList.remove('translate-y-20', 'opacity-0');
@@ -107,35 +102,54 @@
                     }, 3000);
                 },
 
-                // Submits the data to Google Sheets
-                async submitBooking() {
-                    if(!this.bookingForm.fullName || !this.bookingForm.email) { 
-                        alert("Please fill in both Full Name and Email."); 
-                        return; 
+                // Switches views and fetches data if Master List is clicked
+                switchView(viewName) {
+                    this.currentView = viewName;
+                    if (viewName === 'master-list') {
+                        this.loadMasterList();
                     }
-                    
+                },
+
+                // Fetches data from Google Sheets for the Master List
+                async loadMasterList() {
                     this.isLoading = true;
                     try {
-                        // Using 'no-cors' mode because we are calling Google from GitHub Pages
+                        const response = await fetch(this.scriptURL);
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            this.masterList = result.data;
+                        }
+                    } catch (error) {
+                        console.error("Failed to load master list:", error);
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                // Submits the form data
+                async submitBooking() {
+                    if(!this.bookingForm.fullName || !this.bookingForm.email) { 
+                        alert("Please fill in both Full Name and Email."); return; 
+                    }
+                    this.isLoading = true;
+                    try {
                         await fetch(this.scriptURL, {
-                            method: 'POST',
-                            mode: 'no-cors',
+                            method: 'POST', mode: 'no-cors',
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify(this.bookingForm)
                         });
-                        
                         this.showToast();
                         
-                        // Clear the form fields
-                        this.bookingForm.fullName = '';
-                        this.bookingForm.email = '';
-                        this.bookingForm.court = 'Court 1';
-                        this.bookingForm.date = new Date().toISOString().split('T')[0];
+                        // Reset Form
+                        this.bookingForm = { 
+                            fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
+                            date: new Date().toISOString().split('T')[0], sportType: 'Basketball', court: 'Court 1',
+                            remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
+                        };
                         
-                        // Return to the dashboard
-                        this.currentView = 'dashboard';
+                        // Switch to master list to see the new entry
+                        this.switchView('master-list');
                     } catch (error) {
-                        console.error(error);
                         alert("Failed to connect to the database. Please check your URL.");
                     } finally {
                         this.isLoading = false;
@@ -146,8 +160,8 @@
     </script>
     
     <style>
-        .form-input { @apply block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-blueStart sm:text-sm sm:leading-6 px-3; }
-        .form-label { @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5; }
+        .form-input { @apply block w-full rounded-md border border-gray-300 py-2 text-gray-700 shadow-sm focus:border-primary-blueStart focus:ring-1 focus:ring-primary-blueStart sm:text-sm px-3 outline-none transition-colors; }
+        .form-label { @apply block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5; }
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; transition: opacity 0.2s; }
         input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     </style>
@@ -161,17 +175,17 @@
                 <h1 class="text-2xl font-bold tracking-wider">SKILLS ADMIN</h1>
             </div>
             <nav class="p-4 space-y-2">
-                <a href="#" @click.prevent="currentView = 'dashboard'" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Dashboard
+                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path></svg> Dashboard
                 </a>
-                <a href="#" @click.prevent="currentView = 'calendar'" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    Live Calendar
+                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Live Calendar
                 </a>
-                <a href="#" @click.prevent="currentView = 'new-booking'" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    New Booking
+                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg> New Booking
+                </a>
+                <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> Master List
                 </a>
             </nav>
         </aside>
@@ -179,15 +193,12 @@
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-[1px] flex flex-col items-center justify-center" style="display: none;">
-                <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <svg class="animate-spin h-8 w-8 text-primary-orangeStart mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <span class="text-sm font-bold text-gray-600 tracking-wide">Processing...</span>
             </div>
 
             <header class="bg-white shadow-sm h-20 flex items-center justify-between px-6 lg:px-10 z-10">
-                <h2 class="text-xl font-semibold text-gray-800" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : 'Booking Management')"></h2>
+                <h2 class="text-xl font-semibold text-gray-800" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-3 cursor-pointer">
                     <img src="https://ui-avatars.com/api/?name=Admin+User&background=007bff&color=fff" alt="Profile" class="w-10 h-10 rounded-full border-2 border-gray-200">
                 </div>
@@ -198,16 +209,11 @@
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-8">
                         <p class="text-gray-600">Welcome back. Here is what's happening today.</p>
-                        <button @click="currentView = 'new-booking'" class="bg-gradient-to-r from-primary-orangeStart to-primary-orangeEnd text-white px-6 py-2.5 rounded-lg font-medium shadow-md transition-all transform hover:-translate-y-0.5">+ New Booking Walk-in</button>
+                        <button @click="switchView('new-booking')" class="bg-gradient-to-r from-primary-orangeStart to-primary-orangeEnd text-white px-6 py-2.5 rounded-lg font-medium shadow-md hover:-translate-y-0.5 transition-transform">+ New Booking Walk-in</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm font-medium text-gray-500 mb-1">Total Bookings</p>
-                            <h3 class="text-3xl font-bold text-gray-800">142</h3>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm font-medium text-gray-500 mb-1">Pending Requests</p>
-                            <h3 class="text-3xl font-bold text-gray-800">18</h3>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Total Bookings</p><h3 class="text-3xl font-bold text-gray-800">142</h3>
                         </div>
                     </div>
                 </div>
@@ -233,27 +239,22 @@
                                     <div class="p-4 text-center font-bold text-gray-800 border-r border-gray-200">Court 2</div>
                                     <div class="p-4 text-center font-bold text-gray-800">Court 3</div>
                                 </div>
-
                                 <template x-for="block in timeBlocks" :key="block.start">
-                                    <div class="grid grid-cols-[140px_1fr_1fr_1fr] border-b border-gray-100 hover:bg-gray-50 transition-colors group" :data-start-time="block.start" :data-end-time="block.end">
-                                        <div class="p-4 text-[11px] font-medium text-gray-500 text-right border-r border-gray-200 flex items-center justify-end bg-gray-50/50" x-text="block.label"></div>
-                                        
+                                    <div class="grid grid-cols-[140px_1fr_1fr_1fr] border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+                                        <div class="p-4 text-[11px] font-medium text-gray-500 text-right border-r border-gray-200 bg-gray-50/50" x-text="block.label"></div>
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
-                                            <div class="p-2 border-r border-gray-100 last:border-r-0 h-20 relative" :data-court="court">
-                                                
+                                            <div class="p-2 border-r border-gray-100 last:border-r-0 h-20 relative">
                                                 <template x-if="getBookingData(block, court).booked">
                                                     <div class="h-full w-full rounded-md bg-gradient-to-r from-primary-blueStart to-primary-blueEnd text-white shadow-sm flex flex-col items-center justify-center p-2 cursor-pointer transform transition-transform hover:-translate-y-0.5 hover:shadow-md">
                                                         <span class="text-sm font-bold truncate w-full text-center" x-text="getBookingData(block, court).title"></span>
                                                         <span class="text-[10px] opacity-80 mt-0.5 uppercase tracking-wider">Confirmed</span>
                                                     </div>
                                                 </template>
-                                                
                                                 <template x-if="!getBookingData(block, court).booked">
                                                     <div class="h-full w-full rounded-md bg-transparent border border-transparent hover:border-gray-300 hover:bg-white transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 group-hover:bg-white" @click="handleCellClick(court, block)">
                                                         <span class="text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity text-primary-orangeStart">+ Block Slot</span>
                                                     </div>
                                                 </template>
-
                                             </div>
                                         </template>
                                     </div>
@@ -264,42 +265,119 @@
                 </div>
 
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
-                    <h2 class="text-2xl font-bold text-[#0f2042] mb-6 tracking-tight">New Booking Entry</h2>
                     
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-8">
+                            <div><label class="form-label">Full Name</label><input type="text" class="form-input" placeholder="Enter complete name" x-model="bookingForm.fullName"></div>
+                            <div><label class="form-label">Organization Name</label><input type="text" class="form-input" placeholder="Enter organization (Optional)" x-model="bookingForm.organization"></div>
+                            <div><label class="form-label">Email Address</label><input type="email" class="form-input" placeholder="Enter email to send receipt" x-model="bookingForm.email"></div>
+                            <div><label class="form-label">Home Address</label><input type="text" class="form-input" placeholder="Enter complete home address" x-model="bookingForm.address"></div>
                             <div>
-                                <label class="form-label">Full Name</label>
-                                <input type="text" class="form-input" placeholder="Enter complete name" x-model="bookingForm.fullName">
+                                <label class="form-label">Type of ID</label>
+                                <select class="form-input" x-model="bookingForm.idType">
+                                    <option>National ID</option><option>Driver's License</option><option>Passport</option>
+                                </select>
                             </div>
-                            <div>
-                                <label class="form-label">Email Address</label>
-                                <input type="email" class="form-input" placeholder="Enter email to send receipt" x-model="bookingForm.email">
-                            </div>
+                            <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
-                        <div class="border-t border-gray-100 my-6"></div>
-
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-8">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-4 relative">
+                            <button class="absolute top-4 right-4 text-[10px] font-bold text-red-400 bg-red-50 px-2 py-1 rounded">Remove Slot</button>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-5 mt-2">
+                                <div><label class="form-label">Date of Event</label><input type="date" class="form-input" x-model="bookingForm.date"></div>
                                 <div>
-                                    <label class="form-label">Date of Event</label>
-                                    <input type="date" class="form-input text-gray-700" x-model="bookingForm.date">
+                                    <label class="form-label">Sport Type / Package</label>
+                                    <select class="form-input" x-model="bookingForm.sportType"><option>Basketball</option><option>Volleyball</option><option>Badminton</option></select>
                                 </div>
                                 <div>
-                                    <label class="form-label">Facility</label>
-                                    <select class="form-input text-gray-700" x-model="bookingForm.court">
-                                        <option>Court 1</option>
-                                        <option>Court 2</option>
-                                        <option>Court 3</option>
+                                    <label class="form-label">Select Facility</label>
+                                    <select class="form-input" x-model="bookingForm.court"><option>Court 1</option><option>Court 2</option><option>Court 3</option></select>
+                                </div>
+                                <div class="col-span-1 md:col-span-3">
+                                    <label class="form-label">Remarks & Inclusions</label>
+                                    <input type="text" class="form-input text-blue-600" placeholder="Regular Game (Max 20)." x-model="bookingForm.remarks">
+                                </div>
+                                <div>
+                                    <label class="form-label">Time Started</label>
+                                    <select class="form-input" x-model="bookingForm.timeStart">
+                                        <option value="" disabled>Select start time...</option>
+                                        <template x-for="block in timeBlocks"><option x-text="block.queryTime" :value="block.queryTime"></option></template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Time Ended</label>
+                                    <select class="form-input" x-model="bookingForm.timeEnd">
+                                        <option value="" disabled>Select end time...</option>
+                                        <template x-for="block in timeBlocks"><option x-text="block.queryTime" :value="block.queryTime"></option></template>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
-                        <button @click="submitBooking()" class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm transition-colors text-lg flex justify-center items-center">
-                            Save Complete Booking
-                        </button>
+                        <button class="w-full py-3 mb-8 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 flex justify-center items-center">+ Add Another Booking Slot</button>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div><label class="form-label">Total Hours (All Slots)</label><input type="text" class="form-input bg-gray-50" x-model="bookingForm.totalHours"></div>
+                            <div><label class="form-label">Total Base Amount (All Slots)</label><input type="text" class="form-input bg-gray-50" x-model="bookingForm.baseAmount"></div>
+                        </div>
+
+                        <div class="border-2 border-dashed border-gray-200 rounded-lg p-5 mb-8">
+                            <label class="form-label mb-3">Additional Charges (Applied to entire transaction)</label>
+                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-xs font-bold text-gray-600 shadow-sm">+ Add Charge/Remark</button>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="form-label">Grand Total Payable (PHP)</label>
+                            <input type="text" class="w-full bg-[#f0f7ff] border border-blue-200 rounded-lg p-4 text-3xl font-black text-slate-800 outline-none" x-model="bookingForm.grandTotal">
+                        </div>
+
+                        <div class="mb-8">
+                            <label class="form-label">Mode of Payment</label>
+                            <select class="form-input" x-model="bookingForm.paymentMode"><option>Cash</option><option>GCash</option><option>Bank Transfer</option></select>
+                        </div>
+
+                        <button @click="submitBooking()" class="w-full bg-primary-formBlue hover:bg-blue-600 text-white font-bold py-4 rounded-lg shadow-sm text-lg">Save Complete Booking</button>
+                    </div>
+                </div>
+
+                <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-6xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="font-bold text-gray-800">Booking Database Records</h3>
+                            <button @click="loadMasterList()" class="text-sm font-semibold text-primary-blueStart hover:underline">Refresh Data</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
+                                        <th class="p-4 font-semibold">Date Saved</th>
+                                        <th class="p-4 font-semibold">Customer</th>
+                                        <th class="p-4 font-semibold">Event Date</th>
+                                        <th class="p-4 font-semibold">Facility</th>
+                                        <th class="p-4 font-semibold">Time</th>
+                                        <th class="p-4 font-semibold">Total (PHP)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-if="masterList.length === 0">
+                                        <tr><td colspan="6" class="p-8 text-center text-gray-400">No records found or data is loading.</td></tr>
+                                    </template>
+                                    <template x-for="item in masterList" :key="item.timestamp">
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                            <td class="p-4 text-sm text-gray-500" x-text="new Date(item.timestamp).toLocaleDateString()"></td>
+                                            <td class="p-4 text-sm font-bold text-gray-800">
+                                                <span x-text="item.fullName"></span>
+                                                <span class="block text-xs font-normal text-gray-400" x-text="item.organization"></span>
+                                            </td>
+                                            <td class="p-4 text-sm text-gray-700" x-text="item.date"></td>
+                                            <td class="p-4 text-sm text-gray-700 font-medium" x-text="item.facility"></td>
+                                            <td class="p-4 text-sm text-gray-600"><span x-text="item.timeStart"></span> - <span x-text="item.timeEnd"></span></td>
+                                            <td class="p-4 text-sm font-bold text-green-600" x-text="item.grandTotal"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
