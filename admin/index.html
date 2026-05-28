@@ -79,7 +79,17 @@
                     'Badminton': ['Court 2'],
                     'Package A': ['WHOLE GYM'],
                     'Package B': ['Court 1'],
-                    'Package C': ['Court 1', 'Court 2', 'Court 3'],
+                    'Package C': ['ALL 3 COURTS']
+                },
+
+                // Auto-population mapping for Remarks
+                remarksMap: {
+                    'Basketball': 'Regular Game (Max. 20)',
+                    'Volleyball': 'Regular Game (Max. 20)',
+                    'Badminton': 'Regular Game (Max. 20)',
+                    'Package A': '(Whole Gym (3 courts), Bleachers, Fan, Lights.)',
+                    'Package B': '(Exclusive use of Bleachers, Fan, Lights (Max 80))',
+                    'Package C': '(Pkg C: Fan and Lights (Max 50))'
                 },
 
                 // Sport and Court start empty to force selection
@@ -106,6 +116,9 @@
                 handleSportTypeChange() {
                     this.bookingForm.court = ''; // Reset facility field
                     this.errors.sportType = false; // Clear validation error
+                    
+                    // Auto-populate the Remarks & Inclusions field
+                    this.bookingForm.remarks = this.remarksMap[this.bookingForm.sportType] || '';
                 },
 
                 validateForm() {
@@ -202,8 +215,9 @@
                 },
 
                 handleCellClick(court, block) {
-                    // Pre-fill valid Sport Type based on Calendar mapping (Defaults to Basketball so courts show correctly)
+                    // Pre-fill valid Sport Type based on Calendar mapping
                     this.bookingForm.sportType = 'Basketball'; 
+                    this.handleSportTypeChange(); // Trigger the auto-population logic
                     this.bookingForm.court = court;
                     this.bookingForm.date = this.currentDate;
                     this.bookingForm.timeStart = block.queryTime;
@@ -307,7 +321,6 @@
 
     <div class="flex h-screen overflow-hidden">
         
-        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -320,7 +333,6 @@
             </nav>
         </aside>
 
-        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -328,7 +340,6 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
             </div>
 
-            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -342,7 +353,6 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
-                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -356,7 +366,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
@@ -399,7 +408,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
@@ -425,7 +433,6 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
-                        <!-- Section 2: Slot Box -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                             <button class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                             
@@ -435,7 +442,6 @@
                                     <input type="date" class="form-input" :class="errors.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.date" @change="errors.date = false">
                                 </div>
                                 
-                                <!-- DYNAMIC DEPENDENT DROPDOWNS -->
                                 <div>
                                     <label class="form-label">Sport Type / Package <span class="text-red-500">*</span></label>
                                     <select class="form-input" :class="errors.sportType ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.sportType" @change="handleSportTypeChange()">
@@ -458,7 +464,10 @@
                                     </select>
                                 </div>
 
-                                <div class="col-span-1 md:col-span-3"><label class="form-label">Remarks & Inclusions</label><input type="text" class="form-input" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks"></div>
+                                <div class="col-span-1 md:col-span-3">
+                                    <label class="form-label">Remarks & Inclusions</label>
+                                    <input type="text" class="form-input font-medium text-slate-700" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks">
+                                </div>
                                 
                                 <div>
                                     <label class="form-label">Time Started <span class="text-red-500">*</span></label>
@@ -510,7 +519,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -556,7 +564,6 @@
         </div>
     </div>
 
-    <!-- Multi-State Floating Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
