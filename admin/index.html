@@ -21,13 +21,13 @@
     <style type="text/tailwindcss">
         @layer components {
             .form-input { 
-                @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 px-4 text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 sm:text-sm; 
+                @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 px-4 text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100; 
             }
             .form-label { 
                 @apply mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500; 
             }
             select.form-input {
-                @apply appearance-none bg-no-repeat pr-10 cursor-pointer;
+                @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:cursor-not-allowed;
                 background-position: right 1rem center;
                 background-size: 1.2em 1.2em;
                 background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
@@ -72,46 +72,68 @@
                     '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
                 ],
                 
+                // Form mapping for dropdown dependencies
+                facilityMap: {
+                    'Basketball': ['Court 1', 'Court 2', 'Court 3'],
+                    'Volleyball': ['Court 1', 'Court 3'],
+                    'Badminton': ['Court 2'],
+                    'Package A': ['WHOLE GYM'],
+                    'Package B': ['Court 1'],
+                    'Package C': ['ALL 3 COURTS']
+                },
+
+                // Sport and Court start empty to force selection
                 bookingForm: { 
                     fullName: '', organization: '', email: '', address: '',
                     idType: 'National ID', idNumber: '',
-                    date: new Date().toISOString().split('T')[0], sportType: 'Basketball', court: 'Court 1',
+                    date: new Date().toISOString().split('T')[0], sportType: '', court: '',
                     remarks: '', timeStart: '', timeEnd: '',
                     totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
                 },
 
-                // Track fields that failed validation
                 errors: {},
                 masterList: [],
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
 
-                // Advanced Validation Logic
+                // Getter returning dynamic facility options
+                get availableFacilities() {
+                    return this.bookingForm.sportType ? this.facilityMap[this.bookingForm.sportType] : [];
+                },
+
+                // Method triggered when Sport Type is changed
+                handleSportTypeChange() {
+                    this.bookingForm.court = ''; // Reset facility field
+                    this.errors.sportType = false; // Clear validation error
+                },
+
                 validateForm() {
-                    this.errors = {}; // Reset errors before checking
+                    this.errors = {}; 
                     let count = 0;
 
                     if (!this.bookingForm.fullName) { this.errors.fullName = true; count++; }
                     if (!this.bookingForm.email) { this.errors.email = true; count++; }
                     if (!this.bookingForm.date) { this.errors.date = true; count++; }
+                    if (!this.bookingForm.sportType) { this.errors.sportType = true; count++; }
+                    if (!this.bookingForm.court) { this.errors.court = true; count++; }
                     if (!this.bookingForm.timeStart) { this.errors.timeStart = true; count++; }
                     if (!this.bookingForm.timeEnd) { this.errors.timeEnd = true; count++; }
 
-                    // If multiple errors exist, give a generic warning. If just one, be specific.
                     if (count === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
                         if (this.errors.date) return "Event Date is required.";
+                        if (this.errors.sportType) return "Sport Type / Package is required.";
+                        if (this.errors.court) return "Facility selection is required.";
                         if (this.errors.timeStart) return "Start Time is required.";
                         if (this.errors.timeEnd) return "End Time is required.";
                     } else if (count > 1) {
                         return `Please fill in the ${count} highlighted fields.`;
                     }
-                    return null; // Null means no errors!
+                    return null;
                 },
 
-                // Dynamic Pricing Engine
                 calculateTotals() {
                     if (!this.bookingForm.timeStart || !this.bookingForm.timeEnd) {
                         this.bookingForm.totalHours = '0';
@@ -180,6 +202,8 @@
                 },
 
                 handleCellClick(court, block) {
+                    // Pre-fill valid Sport Type based on Calendar mapping (Defaults to Basketball so courts show correctly)
+                    this.bookingForm.sportType = 'Basketball'; 
                     this.bookingForm.court = court;
                     this.bookingForm.date = this.currentDate;
                     this.bookingForm.timeStart = block.queryTime;
@@ -193,7 +217,6 @@
                     this.currentView = 'new-booking';
                 },
 
-                // Dynamic Toast Handler
                 showToast(msg, type = 'success') {
                     const toast = document.getElementById('toast');
                     const toastMsg = document.getElementById('toast-text');
@@ -246,11 +269,10 @@
                 },
 
                 async submitBooking() {
-                    // Run validation before trying to submit
                     const errorMessage = this.validateForm();
                     if (errorMessage) {
                         this.showToast(errorMessage, 'error');
-                        return; // Stop execution
+                        return; 
                     }
 
                     this.isLoading = true;
@@ -265,10 +287,10 @@
                         
                         this.bookingForm = { 
                             fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
-                            date: new Date().toISOString().split('T')[0], sportType: 'Basketball', court: 'Court 1',
+                            date: new Date().toISOString().split('T')[0], sportType: '', court: '',
                             remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
                         };
-                        this.errors = {}; // Clear errors
+                        this.errors = {}; 
                         
                         this.switchView('master-list');
                     } catch (error) {
@@ -285,6 +307,7 @@
 
     <div class="flex h-screen overflow-hidden">
         
+        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -297,6 +320,7 @@
             </nav>
         </aside>
 
+        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -304,6 +328,7 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
             </div>
 
+            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -317,6 +342,7 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
+                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -330,6 +356,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
@@ -372,6 +399,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
@@ -397,6 +425,7 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
+                        <!-- Section 2: Slot Box -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                             <button class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                             
@@ -405,8 +434,30 @@
                                     <label class="form-label">Date of Event <span class="text-red-500">*</span></label>
                                     <input type="date" class="form-input" :class="errors.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.date" @change="errors.date = false">
                                 </div>
-                                <div><label class="form-label">Sport Type / Package</label><select class="form-input" x-model="bookingForm.sportType"><option>Basketball</option><option>Volleyball</option><option>Badminton</option></select></div>
-                                <div><label class="form-label">Select Facility</label><select class="form-input" x-model="bookingForm.court"><option>Court 1</option><option>Court 2</option><option>Court 3</option></select></div>
+                                
+                                <!-- DYNAMIC DEPENDENT DROPDOWNS -->
+                                <div>
+                                    <label class="form-label">Sport Type / Package <span class="text-red-500">*</span></label>
+                                    <select class="form-input" :class="errors.sportType ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.sportType" @change="handleSportTypeChange()">
+                                        <option value="" disabled>Select option...</option>
+                                        <option>Basketball</option>
+                                        <option>Volleyball</option>
+                                        <option>Badminton</option>
+                                        <option>Package A</option>
+                                        <option>Package B</option>
+                                        <option>Package C</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Select Facility <span class="text-red-500">*</span></label>
+                                    <select class="form-input" :class="errors.court ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.court" :disabled="!bookingForm.sportType" @change="errors.court = false">
+                                        <option value="" disabled>Select facility...</option>
+                                        <template x-for="fac in availableFacilities" :key="fac">
+                                            <option x-text="fac" :value="fac"></option>
+                                        </template>
+                                    </select>
+                                </div>
+
                                 <div class="col-span-1 md:col-span-3"><label class="form-label">Remarks & Inclusions</label><input type="text" class="form-input" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks"></div>
                                 
                                 <div>
@@ -459,6 +510,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -504,6 +556,7 @@
         </div>
     </div>
 
+    <!-- Multi-State Floating Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
