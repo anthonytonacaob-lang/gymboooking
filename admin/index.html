@@ -179,6 +179,7 @@
 
     <div class="flex h-screen overflow-hidden">
         
+        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -199,6 +200,7 @@
             </nav>
         </aside>
 
+        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -206,7 +208,8 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
             </div>
 
-            <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
                     <div class="text-right hidden md:block">
@@ -221,6 +224,7 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
+                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -241,8 +245,10 @@
                     </div>
                 </div>
 
-                <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col h-full max-w-7xl mx-auto w-full">
+                <!-- VIEW 2: REFINED CSS GRID CALENDAR (SCROLL FIX & WIDTH FIX) -->
+                <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     
+                    <!-- Calendar Controls -->
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
                             <button @click="changeDay(-1)" class="px-4 h-full text-slate-400 hover:bg-slate-50 border-r border-slate-200 focus:outline-none transition-colors font-medium">&lt;</button>
@@ -252,24 +258,30 @@
                         <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest px-4 py-2 hover:bg-blue-50 rounded-lg transition-colors">Today</button>
                     </div>
 
+                    <!-- Modern Grid Layout (Column 1 width increased to 180px) -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-10">
                         <div class="overflow-x-auto">
-                            <div class="min-w-[800px]">
-                                <div class="grid grid-cols-[140px_1fr_1fr_1fr] bg-white border-b border-slate-200 sticky top-0 z-10">
+                            <div class="min-w-[900px]">
+                                <!-- Header Row -->
+                                <div class="grid grid-cols-[180px_1fr_1fr_1fr] bg-white border-b border-slate-200 sticky top-0 z-10">
                                     <div class="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 flex items-center justify-center">Time Block</div>
                                     <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 1</div>
                                     <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 2</div>
                                     <div class="p-5 text-center font-bold text-slate-800 text-sm">Court 3</div>
                                 </div>
                                 
+                                <!-- Time Blocks Loop -->
                                 <template x-for="block in timeBlocks" :key="block.start">
-                                    <div class="grid grid-cols-[140px_1fr_1fr_1fr] border-b border-slate-100 group bg-white">
+                                    <div class="grid grid-cols-[180px_1fr_1fr_1fr] border-b border-slate-100 group bg-white">
                                         
-                                        <div class="p-4 text-[11px] font-bold text-slate-500 text-center border-r border-slate-100 flex items-center justify-center" x-text="block.label"></div>
+                                        <!-- Y-Axis Time Label (Width 180px + whitespace-nowrap prevents line breaks) -->
+                                        <div class="p-4 text-xs font-bold text-slate-500 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
                                         
+                                        <!-- Columns (Court 1, 2, 3) -->
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                             <div class="p-3 border-r border-slate-100 last:border-r-0 h-28 relative">
                                                 
+                                                <!-- If Slot is Booked -->
                                                 <template x-if="getBookingData(block, court).booked">
                                                     <div class="w-full h-full rounded-xl bg-blue-600 text-white flex flex-col items-center justify-center cursor-default shadow-md shadow-blue-500/20 transform transition-transform hover:scale-[1.02]">
                                                         <span class="text-sm font-bold truncate w-full text-center px-2" x-text="getBookingData(block, court).title"></span>
@@ -277,6 +289,7 @@
                                                     </div>
                                                 </template>
                                                 
+                                                <!-- If Slot is Available (Empty state) -->
                                                 <template x-if="!getBookingData(block, court).booked">
                                                     <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">
                                                         + Book Slot
@@ -292,6 +305,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
@@ -310,6 +324,7 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
+                        <!-- Section 2: Slot Box -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                             <button class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                             
@@ -380,6 +395,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -425,6 +441,7 @@
         </div>
     </div>
 
+    <!-- Floating Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div class="bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-slate-700">
             <div class="bg-green-500/20 p-2 rounded-lg mr-4 text-green-400">
