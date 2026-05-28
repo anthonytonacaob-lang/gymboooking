@@ -47,7 +47,6 @@
                 isLoading: false,
                 currentDate: new Date().toISOString().split('T')[0],
 
-                // Calendar Display Blocks
                 timeBlocks: [
                     { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
                     { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
@@ -67,7 +66,6 @@
                     { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
 
-                // Flat time options for dropdown selections
                 timeOptions: [
                     '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
                     '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
@@ -82,10 +80,36 @@
                     totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
                 },
 
+                // Track fields that failed validation
+                errors: {},
                 masterList: [],
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
+
+                // Advanced Validation Logic
+                validateForm() {
+                    this.errors = {}; // Reset errors before checking
+                    let count = 0;
+
+                    if (!this.bookingForm.fullName) { this.errors.fullName = true; count++; }
+                    if (!this.bookingForm.email) { this.errors.email = true; count++; }
+                    if (!this.bookingForm.date) { this.errors.date = true; count++; }
+                    if (!this.bookingForm.timeStart) { this.errors.timeStart = true; count++; }
+                    if (!this.bookingForm.timeEnd) { this.errors.timeEnd = true; count++; }
+
+                    // If multiple errors exist, give a generic warning. If just one, be specific.
+                    if (count === 1) {
+                        if (this.errors.fullName) return "Full Name is required.";
+                        if (this.errors.email) return "Email Address is required.";
+                        if (this.errors.date) return "Event Date is required.";
+                        if (this.errors.timeStart) return "Start Time is required.";
+                        if (this.errors.timeEnd) return "End Time is required.";
+                    } else if (count > 1) {
+                        return `Please fill in the ${count} highlighted fields.`;
+                    }
+                    return null; // Null means no errors!
+                },
 
                 // Dynamic Pricing Engine
                 calculateTotals() {
@@ -96,7 +120,6 @@
                         return;
                     }
 
-                    // Helper to convert "2:00 PM" into military time (14)
                     const parseTime = (timeStr) => {
                         const [time, modifier] = timeStr.split(' ');
                         let hours = parseInt(time.split(':')[0], 10);
@@ -108,7 +131,6 @@
                     const startHour = parseTime(this.bookingForm.timeStart);
                     const endHour = parseTime(this.bookingForm.timeEnd);
 
-                    // Prevent backwards time selection
                     if (endHour <= startHour) {
                         this.bookingForm.totalHours = '0';
                         this.bookingForm.baseAmount = '0.00';
@@ -119,16 +141,14 @@
                     const totalHours = endHour - startHour;
                     let totalAmount = 0;
 
-                    // Loop through each booked hour and apply correct rate
                     for (let i = startHour; i < endHour; i++) {
                         if (i >= 6 && i < 17) {
-                            totalAmount += 450; // Daytime Rate: 6:00 AM to 5:00 PM (17:00)
+                            totalAmount += 450; 
                         } else if (i >= 17 && i < 22) {
-                            totalAmount += 550; // Evening Rate: 5:00 PM to 10:00 PM (22:00)
+                            totalAmount += 550; 
                         }
                     }
 
-                    // Apply calculated values to the UI models
                     this.bookingForm.totalHours = totalHours.toString();
                     this.bookingForm.baseAmount = totalAmount.toFixed(2);
                     this.bookingForm.grandTotal = totalAmount.toFixed(2);
@@ -164,25 +184,43 @@
                     this.bookingForm.date = this.currentDate;
                     this.bookingForm.timeStart = block.queryTime;
 
-                    // Auto-set timeEnd to the end of that specific 1-hour block
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
                     if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
                         this.bookingForm.timeEnd = this.timeOptions[startIndex + 1];
                     }
 
-                    // Trigger the calculation instantly
                     this.calculateTotals();
                     this.currentView = 'new-booking';
                 },
 
-                showToast() {
+                // Dynamic Toast Handler
+                showToast(msg, type = 'success') {
                     const toast = document.getElementById('toast');
+                    const toastMsg = document.getElementById('toast-text');
+                    const toastTitle = document.getElementById('toast-title');
+                    const toastIcon = document.getElementById('toast-icon');
+                    const iconBg = document.getElementById('icon-bg');
+                    
+                    toastMsg.innerText = msg;
+                    
+                    if (type === 'error') {
+                        toast.className = `fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-red-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-red-600`;
+                        toastTitle.innerText = "Action Required";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>`;
+                        iconBg.className = "bg-white/20 p-2 rounded-lg mr-4 text-white";
+                    } else {
+                        toast.className = `fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-slate-700`;
+                        toastTitle.innerText = "Success";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`;
+                        iconBg.className = "bg-green-500/20 p-2 rounded-lg mr-4 text-green-400";
+                    }
+                    
                     toast.classList.remove('translate-y-20', 'opacity-0');
                     toast.classList.add('translate-y-0', 'opacity-100');
                     setTimeout(() => { 
                         toast.classList.remove('translate-y-0', 'opacity-100'); 
                         toast.classList.add('translate-y-20', 'opacity-0'); 
-                    }, 3000);
+                    }, 4000);
                 },
 
                 switchView(viewName) {
@@ -208,9 +246,13 @@
                 },
 
                 async submitBooking() {
-                    if(!this.bookingForm.fullName || !this.bookingForm.email) { 
-                        alert("Please fill in both Full Name and Email."); return; 
+                    // Run validation before trying to submit
+                    const errorMessage = this.validateForm();
+                    if (errorMessage) {
+                        this.showToast(errorMessage, 'error');
+                        return; // Stop execution
                     }
+
                     this.isLoading = true;
                     try {
                         await fetch(this.scriptURL, {
@@ -218,17 +260,19 @@
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify(this.bookingForm)
                         });
-                        this.showToast();
+                        
+                        this.showToast('Booking Saved Successfully!', 'success');
                         
                         this.bookingForm = { 
                             fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                             date: new Date().toISOString().split('T')[0], sportType: 'Basketball', court: 'Court 1',
                             remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
                         };
+                        this.errors = {}; // Clear errors
                         
                         this.switchView('master-list');
                     } catch (error) {
-                        alert("Failed to connect to the database. Please check your URL.");
+                        this.showToast("Failed to connect to the database. Check your URL.", 'error');
                     } finally {
                         this.isLoading = false;
                     }
@@ -241,28 +285,18 @@
 
     <div class="flex h-screen overflow-hidden">
         
-        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
             </div>
             <nav class="p-4 space-y-2 mt-4">
-                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">
-                    Dashboard
-                </a>
-                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">
-                    Live Calendar
-                </a>
-                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">
-                    New Booking
-                </a>
-                <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm mt-8 border-t border-white/10 pt-4">
-                    Master List
-                </a>
+                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">Dashboard</a>
+                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">Live Calendar</a>
+                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">New Booking</a>
+                <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm mt-8 border-t border-white/10 pt-4">Master List</a>
             </nav>
         </aside>
 
-        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -270,7 +304,6 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
             </div>
 
-            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -278,39 +311,26 @@
                         <p class="text-sm font-bold text-slate-900">Anthony Toñacao</p>
                         <p class="text-xs text-slate-500">Administrator</p>
                     </div>
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                        AU
-                    </div>
+                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">AU</div>
                 </div>
             </header>
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
-                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
-                        <button @click="switchView('new-booking')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all flex items-center">
-                            <span class="mr-2">+</span> New Walk-in
-                        </button>
+                        <button @click="switchView('new-booking')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all flex items-center"><span class="mr-2">+</span> New Walk-in</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
-                            <div class="bg-blue-50 p-4 rounded-xl mr-5">
-                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Bookings</p>
-                                <h3 class="text-4xl font-black text-slate-800">142</h3>
-                            </div>
+                            <div class="bg-blue-50 p-4 rounded-xl mr-5"><svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></div>
+                            <div><p class="text-sm font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Bookings</p><h3 class="text-4xl font-black text-slate-800">142</h3></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW 2: CSS GRID CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
-                    
-                    <!-- Calendar Controls -->
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
                             <button @click="changeDay(-1)" class="px-4 h-full text-slate-400 hover:bg-slate-50 border-r border-slate-200 focus:outline-none transition-colors font-medium">&lt;</button>
@@ -320,26 +340,18 @@
                         <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest px-4 py-2 hover:bg-blue-50 rounded-lg transition-colors">Today</button>
                     </div>
 
-                    <!-- Modern Grid Layout -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-10">
                         <div class="overflow-x-auto">
                             <div class="min-w-[900px]">
-                                <!-- Header Row -->
                                 <div class="grid grid-cols-[180px_1fr_1fr_1fr] bg-white border-b border-slate-200 sticky top-0 z-10">
                                     <div class="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 flex items-center justify-center">Time Block</div>
                                     <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 1</div>
                                     <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 2</div>
                                     <div class="p-5 text-center font-bold text-slate-800 text-sm">Court 3</div>
                                 </div>
-                                
-                                <!-- Time Blocks Loop -->
                                 <template x-for="block in timeBlocks" :key="block.start">
                                     <div class="grid grid-cols-[180px_1fr_1fr_1fr] border-b border-slate-100 group bg-white">
-                                        
-                                        <!-- Y-Axis Time Label -->
                                         <div class="p-4 text-xs font-bold text-slate-500 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
-                                        
-                                        <!-- Columns (Court 1, 2, 3) -->
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                             <div class="p-3 border-r border-slate-100 last:border-r-0 h-28 relative">
                                                 <template x-if="getBookingData(block, court).booked">
@@ -349,13 +361,10 @@
                                                     </div>
                                                 </template>
                                                 <template x-if="!getBookingData(block, court).booked">
-                                                    <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">
-                                                        + Book Slot
-                                                    </div>
+                                                    <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Book Slot</div>
                                                 </template>
                                             </div>
                                         </template>
-
                                     </div>
                                 </template>
                             </div>
@@ -363,61 +372,55 @@
                     </div>
                 </div>
 
-                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-10">
-                            <div><label class="form-label">Full Name</label><input type="text" class="form-input" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName"></div>
-                            <div><label class="form-label">Organization Name</label><input type="text" class="form-input" placeholder="e.g. SKILLS Inc. (Optional)" x-model="bookingForm.organization"></div>
-                            <div><label class="form-label">Email Address</label><input type="email" class="form-input" placeholder="Enter email to send receipt" x-model="bookingForm.email"></div>
+                            <div>
+                                <label class="form-label">Full Name <span class="text-red-500">*</span></label>
+                                <input type="text" class="form-input" :class="errors.fullName ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName" @input="errors.fullName = false">
+                            </div>
+                            <div>
+                                <label class="form-label">Organization Name</label>
+                                <input type="text" class="form-input" placeholder="e.g. SKILLS Inc. (Optional)" x-model="bookingForm.organization">
+                            </div>
+                            <div>
+                                <label class="form-label">Email Address <span class="text-red-500">*</span></label>
+                                <input type="email" class="form-input" :class="errors.email ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="Enter email to send receipt" x-model="bookingForm.email" @input="errors.email = false">
+                            </div>
                             <div><label class="form-label">Home Address</label><input type="text" class="form-input" placeholder="Enter complete home address" x-model="bookingForm.address"></div>
                             <div>
                                 <label class="form-label">Type of ID</label>
-                                <select class="form-input" x-model="bookingForm.idType">
-                                    <option>National ID</option><option>Driver's License</option><option>Passport</option>
-                                </select>
+                                <select class="form-input" x-model="bookingForm.idType"><option>National ID</option><option>Driver's License</option><option>Passport</option></select>
                             </div>
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
-                        <!-- Section 2: Slot Box -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                             <button class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                             
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6 mt-4">
-                                <div><label class="form-label">Date of Event</label><input type="date" class="form-input" x-model="bookingForm.date"></div>
                                 <div>
-                                    <label class="form-label">Sport Type / Package</label>
-                                    <select class="form-input" x-model="bookingForm.sportType"><option>Basketball</option><option>Volleyball</option><option>Badminton</option></select>
+                                    <label class="form-label">Date of Event <span class="text-red-500">*</span></label>
+                                    <input type="date" class="form-input" :class="errors.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.date" @change="errors.date = false">
                                 </div>
-                                <div>
-                                    <label class="form-label">Select Facility</label>
-                                    <select class="form-input" x-model="bookingForm.court"><option>Court 1</option><option>Court 2</option><option>Court 3</option></select>
-                                </div>
-                                <div class="col-span-1 md:col-span-3">
-                                    <label class="form-label">Remarks & Inclusions</label>
-                                    <input type="text" class="form-input" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks">
-                                </div>
+                                <div><label class="form-label">Sport Type / Package</label><select class="form-input" x-model="bookingForm.sportType"><option>Basketball</option><option>Volleyball</option><option>Badminton</option></select></div>
+                                <div><label class="form-label">Select Facility</label><select class="form-input" x-model="bookingForm.court"><option>Court 1</option><option>Court 2</option><option>Court 3</option></select></div>
+                                <div class="col-span-1 md:col-span-3"><label class="form-label">Remarks & Inclusions</label><input type="text" class="form-input" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks"></div>
                                 
-                                <!-- DYNAMIC PRICING SELECTORS -->
                                 <div>
-                                    <label class="form-label">Time Started</label>
-                                    <select class="form-input font-semibold" x-model="bookingForm.timeStart" @change="calculateTotals()">
+                                    <label class="form-label">Time Started <span class="text-red-500">*</span></label>
+                                    <select class="form-input font-semibold" :class="errors.timeStart ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.timeStart" @change="calculateTotals(); errors.timeStart = false">
                                         <option value="" disabled>Select start time...</option>
-                                        <template x-for="time in timeOptions.slice(0, -1)" :key="time">
-                                            <option x-text="time" :value="time"></option>
-                                        </template>
+                                        <template x-for="time in timeOptions.slice(0, -1)" :key="time"><option x-text="time" :value="time"></option></template>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="form-label">Time Ended</label>
-                                    <select class="form-input font-semibold" x-model="bookingForm.timeEnd" @change="calculateTotals()">
+                                    <label class="form-label">Time Ended <span class="text-red-500">*</span></label>
+                                    <select class="form-input font-semibold" :class="errors.timeEnd ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.timeEnd" @change="calculateTotals(); errors.timeEnd = false">
                                         <option value="" disabled>Select end time...</option>
-                                        <template x-for="time in timeOptions.slice(1)" :key="time">
-                                            <option x-text="time" :value="time"></option>
-                                        </template>
+                                        <template x-for="time in timeOptions.slice(1)" :key="time"><option x-text="time" :value="time"></option></template>
                                     </select>
                                 </div>
                             </div>
@@ -433,10 +436,7 @@
                         </div>
 
                         <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 flex justify-between items-center bg-white">
-                            <div>
-                                <label class="form-label mb-0 text-slate-700">Additional Charges</label>
-                                <p class="text-xs text-slate-400 mt-1">Applied to entire transaction</p>
-                            </div>
+                            <div><label class="form-label mb-0 text-slate-700">Additional Charges</label><p class="text-xs text-slate-400 mt-1">Applied to entire transaction</p></div>
                             <button class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors">+ Add Charge</button>
                         </div>
 
@@ -445,7 +445,6 @@
                                 <label class="block text-sm font-bold uppercase tracking-widest text-blue-900 mb-1">Grand Total Payable</label>
                                 <p class="text-xs text-blue-600 font-medium">Philippine Peso (PHP)</p>
                             </div>
-                            <!-- Updated Grand Total to be readonly so logic isn't overwritten manually -->
                             <input type="text" class="bg-transparent text-right text-4xl font-black text-blue-900 outline-none w-1/2" x-model="bookingForm.grandTotal" readonly>
                         </div>
 
@@ -460,7 +459,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -506,16 +504,13 @@
         </div>
     </div>
 
-    <!-- Floating Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
-        <div class="bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-slate-700">
-            <div class="bg-green-500/20 p-2 rounded-lg mr-4 text-green-400">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            </div>
-            <div>
-                <span class="block font-bold text-sm">Success</span>
-                <span class="block text-xs text-slate-300">Booking Saved Successfully!</span>
-            </div>
+        <div id="icon-bg" class="p-2 rounded-lg mr-4">
+            <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+        </div>
+        <div>
+            <span id="toast-title" class="block font-bold text-sm"></span>
+            <span id="toast-text" class="block text-xs text-white/80 mt-0.5"></span>
         </div>
     </div>
 
