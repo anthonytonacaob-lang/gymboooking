@@ -72,7 +72,6 @@
                     '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
                 ],
                 
-                // Form mapping for dropdown dependencies
                 facilityMap: {
                     'Basketball': ['Court 1', 'Court 2', 'Court 3'],
                     'Volleyball': ['Court 1', 'Court 3'],
@@ -82,7 +81,6 @@
                     'Package C': ['ALL 3 COURTS']
                 },
 
-                // Auto-population mapping for Remarks
                 remarksMap: {
                     'Basketball': 'Regular Game (Max. 20)',
                     'Volleyball': 'Regular Game (Max. 20)',
@@ -92,13 +90,13 @@
                     'Package C': '(Pkg C: Fan and Lights (Max 50))'
                 },
 
-                // Sport and Court start empty to force selection
                 bookingForm: { 
                     fullName: '', organization: '', email: '', address: '',
                     idType: 'National ID', idNumber: '',
                     date: new Date().toISOString().split('T')[0], sportType: '', court: '',
                     remarks: '', timeStart: '', timeEnd: '',
-                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
+                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
+                    additionalCharges: [] // Array to hold multiple charges
                 },
 
                 errors: {},
@@ -107,18 +105,25 @@
                 // --- GOOGLE SHEETS WEB APP URL ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
 
-                // Getter returning dynamic facility options
                 get availableFacilities() {
                     return this.bookingForm.sportType ? this.facilityMap[this.bookingForm.sportType] : [];
                 },
 
-                // Method triggered when Sport Type is changed
                 handleSportTypeChange() {
-                    this.bookingForm.court = ''; // Reset facility field
-                    this.errors.sportType = false; // Clear validation error
-                    
-                    // Auto-populate the Remarks & Inclusions field
+                    this.bookingForm.court = '';
+                    this.errors.sportType = false;
                     this.bookingForm.remarks = this.remarksMap[this.bookingForm.sportType] || '';
+                },
+
+                // Push a new empty charge object to the array
+                addCharge() {
+                    this.bookingForm.additionalCharges.push({ description: '', amount: '' });
+                },
+
+                // Remove a specific charge object from the array
+                removeCharge(index) {
+                    this.bookingForm.additionalCharges.splice(index, 1);
+                    this.calculateTotals(); // Recalculate grand total when removed
                 },
 
                 validateForm() {
@@ -148,45 +153,50 @@
                 },
 
                 calculateTotals() {
-                    if (!this.bookingForm.timeStart || !this.bookingForm.timeEnd) {
-                        this.bookingForm.totalHours = '0';
-                        this.bookingForm.baseAmount = '0.00';
-                        this.bookingForm.grandTotal = '0.00';
-                        return;
-                    }
-
-                    const parseTime = (timeStr) => {
-                        const [time, modifier] = timeStr.split(' ');
-                        let hours = parseInt(time.split(':')[0], 10);
-                        if (hours === 12 && modifier === 'AM') hours = 0;
-                        if (hours < 12 && modifier === 'PM') hours += 12;
-                        return hours;
-                    };
-
-                    const startHour = parseTime(this.bookingForm.timeStart);
-                    const endHour = parseTime(this.bookingForm.timeEnd);
-
-                    if (endHour <= startHour) {
-                        this.bookingForm.totalHours = '0';
-                        this.bookingForm.baseAmount = '0.00';
-                        this.bookingForm.grandTotal = '0.00';
-                        return;
-                    }
-
-                    const totalHours = endHour - startHour;
                     let totalAmount = 0;
+                    let totalHours = 0;
 
-                    for (let i = startHour; i < endHour; i++) {
-                        if (i >= 6 && i < 17) {
-                            totalAmount += 450; 
-                        } else if (i >= 17 && i < 22) {
-                            totalAmount += 550; 
+                    // 1. Calculate Base Time Costs
+                    if (this.bookingForm.timeStart && this.bookingForm.timeEnd) {
+                        const parseTime = (timeStr) => {
+                            const [time, modifier] = timeStr.split(' ');
+                            let hours = parseInt(time.split(':')[0], 10);
+                            if (hours === 12 && modifier === 'AM') hours = 0;
+                            if (hours < 12 && modifier === 'PM') hours += 12;
+                            return hours;
+                        };
+
+                        const startHour = parseTime(this.bookingForm.timeStart);
+                        const endHour = parseTime(this.bookingForm.timeEnd);
+
+                        if (endHour > startHour) {
+                            totalHours = endHour - startHour;
+                            for (let i = startHour; i < endHour; i++) {
+                                if (i >= 6 && i < 17) {
+                                    totalAmount += 450; 
+                                } else if (i >= 17 && i < 22) {
+                                    totalAmount += 550; 
+                                }
+                            }
                         }
                     }
 
                     this.bookingForm.totalHours = totalHours.toString();
                     this.bookingForm.baseAmount = totalAmount.toFixed(2);
-                    this.bookingForm.grandTotal = totalAmount.toFixed(2);
+
+                    // 2. Add Additional Charges to Grand Total
+                    let extraChargesTotal = 0;
+                    if (this.bookingForm.additionalCharges && this.bookingForm.additionalCharges.length > 0) {
+                        this.bookingForm.additionalCharges.forEach(charge => {
+                            let amt = parseFloat(charge.amount);
+                            if (!isNaN(amt)) {
+                                extraChargesTotal += amt;
+                            }
+                        });
+                    }
+
+                    // 3. Final Computation
+                    this.bookingForm.grandTotal = (totalAmount + extraChargesTotal).toFixed(2);
                 },
 
                 getBookingData(block, court) {
@@ -215,9 +225,8 @@
                 },
 
                 handleCellClick(court, block) {
-                    // Pre-fill valid Sport Type based on Calendar mapping
                     this.bookingForm.sportType = 'Basketball'; 
-                    this.handleSportTypeChange(); // Trigger the auto-population logic
+                    this.handleSportTypeChange(); 
                     this.bookingForm.court = court;
                     this.bookingForm.date = this.currentDate;
                     this.bookingForm.timeStart = block.queryTime;
@@ -299,10 +308,12 @@
                         
                         this.showToast('Booking Saved Successfully!', 'success');
                         
+                        // Reset Form perfectly, including array clearing
                         this.bookingForm = { 
                             fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                             date: new Date().toISOString().split('T')[0], sportType: '', court: '',
-                            remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash'
+                            remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
+                            additionalCharges: []
                         };
                         this.errors = {}; 
                         
@@ -495,9 +506,30 @@
                             <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600" x-model="bookingForm.baseAmount" readonly></div>
                         </div>
 
-                        <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 flex justify-between items-center bg-white">
-                            <div><label class="form-label mb-0 text-slate-700">Additional Charges</label><p class="text-xs text-slate-400 mt-1">Applied to entire transaction</p></div>
-                            <button class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors">+ Add Charge</button>
+                        <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 bg-white">
+                            <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-6' : ''">
+                                <div>
+                                    <label class="form-label mb-0 text-slate-700">Additional Charges</label>
+                                    <p class="text-xs text-slate-400 mt-1">Applied to entire transaction</p>
+                                </div>
+                                <button @click="addCharge()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                    Add Charge
+                                </button>
+                            </div>
+                            
+                            <template x-for="(charge, index) in bookingForm.additionalCharges" :key="index">
+                                <div class="flex flex-col md:flex-row gap-4 mb-4 items-start md:items-center">
+                                    <input type="text" class="form-input flex-1" placeholder="Description (e.g. Extra Chairs, Stall)" x-model="charge.description">
+                                    <div class="relative w-full md:w-1/3">
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₱</span>
+                                        <input type="number" class="form-input pl-9 font-semibold text-slate-700" placeholder="0.00" x-model="charge.amount" @input="calculateTotals()">
+                                    </div>
+                                    <button @click="removeCharge(index)" class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Remove Charge">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </template>
                         </div>
 
                         <div class="mb-8 bg-blue-50 border border-blue-100 rounded-xl p-6 flex justify-between items-center">
