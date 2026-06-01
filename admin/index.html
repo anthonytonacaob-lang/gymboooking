@@ -36,13 +36,10 @@
             input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
         }
 
-        /* PRINT STYLES FOR THE RECEIPT */
         @media print {
             @page { margin: 0.5cm; size: auto; }
             body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            /* Hide the main app and toast completely */
             #app-wrapper, #toast { display: none !important; }
-            /* Show the receipt wrapper */
             #print-receipt-wrapper { display: block !important; }
         }
     </style>
@@ -109,21 +106,24 @@
 
                 errors: { slots: [{}] }, 
                 
-                localBookings: [
-                    { ref: 'BK-10293', customer: 'SKILLS PE Training', date: new Date().toISOString().split('T')[0], court: 'Court 2', timeStart: '8:00 AM', timeEnd: '10:00 AM' },
-                    { ref: 'BK-49210', customer: 'Primary Group Varsity', date: new Date().toISOString().split('T')[0], court: 'Court 1', timeStart: '6:00 PM', timeEnd: '8:00 PM' }
-                ],
+                localBookings: [],
                 masterList: [],
-                
-                // SNAPSHOT FOR THE RECEIPT
                 lastSavedBooking: null,
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
-                scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
+                scriptURL: 'https://script.google.com/macros/s/AKfycbzG8CdJ0bjGzzdeoIQiOQ4lnq8hWqmSZiDP7FP_czqlhR59WuDHcUrkidFZWbSmpL8yug/exec',
 
-                getAvailableFacilities(sport) {
-                    return sport ? this.facilityMap[sport] : [];
+                init() {
+                    const cachedBookings = localStorage.getItem('skills_gym_bookings');
+                    const cachedMasterList = localStorage.getItem('skills_gym_master_list');
+                    
+                    if (cachedBookings) this.localBookings = JSON.parse(cachedBookings);
+                    if (cachedMasterList) this.masterList = JSON.parse(cachedMasterList);
+
+                    this.loadMasterList();
                 },
+
+                getAvailableFacilities(sport) { return sport ? this.facilityMap[sport] : []; },
 
                 handleSportTypeChange(slot, index) {
                     slot.court = ''; 
@@ -302,8 +302,40 @@
                     if (viewName === 'master-list') { this.loadMasterList(); }
                 },
 
-                async loadMasterList() { /* Mock load */ },
+                // PULL FROM GOOGLE SHEETS
+                async loadMasterList() {
+                    if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) return;
+                    this.isLoading = true;
+                    try {
+                        const response = await fetch(this.scriptURL);
+                        const result = await response.json();
+                        if (result.status === 'success' && result.data) {
+                            this.masterList = result.data;
+                            
+                            let newLocalBookings = [];
+                            result.data.forEach(item => {
+                                newLocalBookings.push({
+                                    ref: item.bookingRef || 'BK-LIVE',
+                                    customer: item.fullName,
+                                    date: item.date,
+                                    court: item.facility,
+                                    timeStart: item.timeStart,
+                                    timeEnd: item.timeEnd
+                                });
+                            });
+                            this.localBookings = newLocalBookings;
+                            
+                            localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
+                            localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
+                        }
+                    } catch (error) {
+                        console.error("Server sync error, using local cache.", error);
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
 
+                // PUSH TO GOOGLE SHEETS
                 async submitBooking() {
                     const errorMessage = this.validateForm();
                     if (errorMessage) {
@@ -315,49 +347,47 @@
                     
                     const refNumber = 'BK-' + Math.floor(Math.random() * 90000 + 10000);
                     const targetDate = this.bookingForm.slots[0].date;
-
-                    // SNAPSHOT THE DATA FOR THE RECEIPT BEFORE RESETTING
                     const now = new Date();
+
                     this.lastSavedBooking = JSON.parse(JSON.stringify({
                         ...this.bookingForm,
                         refNumber: refNumber,
                         printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                     }));
 
-                    // 1. SAVE TO LOCAL CALENDAR STATE
+                    // Save directly to memory arrays so the UI updates instantly
                     this.bookingForm.slots.forEach(slot => {
                         this.localBookings.push({
                             ref: refNumber, customer: this.bookingForm.fullName, date: slot.date, court: slot.court, timeStart: slot.timeStart, timeEnd: slot.timeEnd
                         });
+                        
+                        this.masterList.unshift({
+                            bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
+                            date: slot.date, facility: slot.court, timeStart: slot.timeStart, timeEnd: slot.timeEnd, grandTotal: this.bookingForm.grandTotal
+                        });
                     });
 
-                    // 2. SAVE TO MASTER LIST ARRAY
-                    this.masterList.unshift({
-                        timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
-                        date: targetDate + (this.bookingForm.slots.length > 1 ? ` (+${this.bookingForm.slots.length - 1})` : ''),
-                        facility: this.bookingForm.slots[0].court, timeStart: this.bookingForm.slots[0].timeStart, timeEnd: this.bookingForm.slots[0].timeEnd, grandTotal: this.bookingForm.grandTotal
-                    });
+                    // Cache to browser memory immediately (Resists accidental refreshes)
+                    localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
+                    localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
 
+                    // Push blindly to Google Sheet
                     try {
                         await fetch(this.scriptURL, {
                             method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify({...this.bookingForm, bookingRef: refNumber})
                         });
                     } catch (error) {
-                        console.log("Database connection skipped. Using local array.");
+                        console.log("Offline backup generated.");
                     } finally {
                         this.isLoading = false;
                         this.showToast(`Booking ${refNumber} Saved!`, 'success');
-                        
-                        // INSTEAD OF REDIRECTING INSTANTLY, SHOW THE PRINT MODAL
                         this.showReceiptModal = true;
                     }
                 },
 
-                // NEW: Handle post-booking actions
                 printAndFinish() {
                     window.print();
-                    // Close modal and redirect after they finish printing
                     setTimeout(() => { this.finishAndRedirect(); }, 500);
                 },
 
@@ -365,7 +395,6 @@
                     this.showReceiptModal = false;
                     const targetDate = this.lastSavedBooking.slots[0].date;
                     
-                    // Reset Form perfectly
                     this.bookingForm = { 
                         fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                         slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
@@ -383,10 +412,8 @@
 </head>
 <body class="bg-[#f8f9fa] text-slate-800 font-sans antialiased" x-data="appData">
 
-    <!-- THE MAIN APP CONTAINER (HIDDEN DURING PRINT) -->
     <div id="app-wrapper" class="print:hidden flex h-screen overflow-hidden">
         
-        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -399,15 +426,13 @@
             </nav>
         </aside>
 
-        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
                 <svg class="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
+                <span class="text-sm font-bold text-slate-600 tracking-wider">SYNCHRONIZING RECORDS...</span>
             </div>
 
-            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -421,7 +446,6 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
-                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -430,12 +454,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
                             <div class="bg-blue-50 p-4 rounded-xl mr-5"><svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></div>
-                            <div><p class="text-sm font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Bookings</p><h3 class="text-4xl font-black text-slate-800">142</h3></div>
+                            <div><p class="text-sm font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Bookings</p><h3 class="text-4xl font-black text-slate-800" x-text="masterList.length"></h3></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
@@ -466,7 +489,6 @@
                                                         <span class="text-[9px] uppercase tracking-wider font-bold bg-blue-700/60 px-3 py-1 rounded-full mt-1.5" x-text="getBookingData(block, court).bookingRef"></span>
                                                     </div>
                                                 </template>
-                                                
                                                 <template x-if="!getBookingData(block, court).booked">
                                                     <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Book Slot</div>
                                                 </template>
@@ -479,7 +501,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
@@ -505,7 +526,6 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
-                        <!-- MULTI-SLOT ITERATION -->
                         <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
                             <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                                 <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
@@ -557,7 +577,6 @@
                             </div>
                         </template>
 
-                        <!-- Add Slot Button -->
                         <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex justify-center items-center">
                             + Add Another Booking Slot
                         </button>
@@ -567,7 +586,6 @@
                             <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600" x-model="bookingForm.baseAmount" readonly></div>
                         </div>
 
-                        <!-- DYNAMIC ADDITIONAL CHARGES UI -->
                         <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 bg-white">
                             <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-6' : ''">
                                 <div>
@@ -613,7 +631,6 @@
                     </div>
                 </div>
 
-                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -624,7 +641,7 @@
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="bg-white border-b-2 border-slate-100 text-xs uppercase tracking-wider text-slate-500">
-                                        <th class="p-5 font-bold">Date Saved</th>
+                                        <th class="p-5 font-bold">Receipt ID</th>
                                         <th class="p-5 font-bold">Customer</th>
                                         <th class="p-5 font-bold">Event Date</th>
                                         <th class="p-5 font-bold">Facility</th>
@@ -634,11 +651,11 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     <template x-if="masterList.length === 0">
-                                        <tr><td colspan="6" class="p-10 text-center text-slate-400 font-medium">No records found or data is loading.</td></tr>
+                                        <tr><td colspan="6" class="p-10 text-center text-slate-400 font-medium">No records found or data is loading. Check your connection or API configuration.</td></tr>
                                     </template>
                                     <template x-for="item in masterList" :key="item.timestamp">
                                         <tr class="hover:bg-slate-50 transition-colors">
-                                            <td class="p-5 text-sm text-slate-500 font-medium" x-text="new Date(item.timestamp).toLocaleDateString()"></td>
+                                            <td class="p-5 text-sm font-bold text-blue-600 tracking-wider" x-text="item.bookingRef || 'BK-OLD'"></td>
                                             <td class="p-5 text-sm font-bold text-slate-800">
                                                 <span x-text="item.fullName"></span>
                                                 <span class="block text-xs font-semibold text-slate-400 mt-1 uppercase" x-text="item.organization"></span>
@@ -658,15 +675,14 @@
             </main>
         </div>
         
-        <!-- PRINT CONFIRMATION MODAL -->
         <div x-show="showReceiptModal" style="display: none;" class="fixed inset-0 z-[90] flex items-center justify-center">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="finishAndRedirect()"></div>
             <div class="bg-white rounded-2xl shadow-2xl z-[100] max-w-md w-full p-8 transform transition-all" x-transition.scale.origin.bottom>
                 <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 mx-auto">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h3 class="text-2xl font-bold text-center text-slate-800 mb-2">Booking Saved!</h3>
-                <p class="text-center text-slate-500 mb-8">The booking has been successfully secured. Would you like to print the official receipt (2 copies) now?</p>
+                <h3 class="text-2xl font-bold text-center text-slate-800 mb-2">Booking Secured!</h3>
+                <p class="text-center text-slate-500 mb-8">The system has cached the entry securely. Would you like to print the dual official receipt copy now?</p>
                 <div class="flex flex-col space-y-3">
                     <button @click="printAndFinish()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-all flex justify-center items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -678,28 +694,19 @@
                 </div>
             </div>
         </div>
-    </div> <!-- End Main App Wrapper -->
+    </div>
 
-    <!-- ========================================== -->
-    <!-- HIDDEN RECEIPT LAYOUT (ONLY VISIBLE ON PRINT) -->
-    <!-- ========================================== -->
     <div id="print-receipt-wrapper" class="hidden text-black font-sans w-full max-w-[800px] mx-auto">
         <template x-if="lastSavedBooking">
             <div class="flex flex-col min-h-screen">
-                
-                <!-- LOOP TWICE: Customer Copy, Admin Copy -->
                 <template x-for="(copyType, i) in ['CUSTOMER COPY', 'ADMINISTRATOR COPY']" :key="copyType">
                     <div class="flex-1 flex flex-col py-8 px-6 bg-white">
-                        
-                        <!-- Header -->
                         <div class="text-center border-b-2 border-black pb-4 mb-4">
                             <h1 class="text-3xl font-black uppercase tracking-tight">SKILLS Gym Rental</h1>
                             <p class="text-sm font-semibold uppercase tracking-widest text-gray-600 mt-1">Primary Skills Educational Foundation, Inc.</p>
                             <p class="text-xs text-gray-500 mt-1">Gen. Maxilom Ave, Cebu City, Philippines</p>
                             <div class="mt-4 inline-block bg-black text-white px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-sm" x-text="copyType"></div>
                         </div>
-
-                        <!-- Meta Info -->
                         <div class="flex justify-between items-start mb-6 text-sm">
                             <div>
                                 <p class="text-gray-500 uppercase text-xs font-bold mb-1">Billed To:</p>
@@ -713,8 +720,6 @@
                                 <p class="text-gray-500 mt-1" x-text="'Printed: ' + lastSavedBooking.printDate"></p>
                             </div>
                         </div>
-
-                        <!-- Slots Table -->
                         <div class="mb-4">
                             <table class="w-full text-left text-sm border-t border-b border-gray-300">
                                 <thead>
@@ -735,8 +740,6 @@
                                 </tbody>
                             </table>
                         </div>
-
-                        <!-- Additional Charges (If Any) -->
                         <template x-if="lastSavedBooking.additionalCharges.length > 0">
                             <div class="mb-6">
                                 <p class="text-xs font-bold uppercase text-gray-500 mb-2">Additional Charges:</p>
@@ -748,8 +751,6 @@
                                 </template>
                             </div>
                         </template>
-
-                        <!-- Totals Area -->
                         <div class="mt-auto flex flex-col items-end pt-4">
                             <div class="w-1/2">
                                 <div class="flex justify-between text-sm mb-1">
@@ -766,32 +767,22 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Signatures -->
                         <div class="grid grid-cols-2 gap-8 mt-12 pt-8 text-center text-sm">
+                            <div><div class="border-t border-black pt-2">Customer Signature over Printed Name</div></div>
                             <div>
-                                <div class="border-t border-black pt-2">Customer Signature over Printed Name</div>
-                            </div>
-                            <div>
-                                <!-- Context Integration: Pre-fill Admin's name automatically -->
                                 <div class="font-bold text-lg leading-none mb-1">Anthony Toñacao</div>
                                 <div class="border-t border-black pt-2">Authorized Cashier / Administrator</div>
                             </div>
                         </div>
-
                     </div>
-
-                    <!-- Cut line logic: Show line after the first copy only -->
                     <div x-show="i === 0" class="border-b-2 border-dashed border-gray-400 my-4 flex-shrink-0 relative">
                         <span class="absolute right-8 -top-3 bg-white px-4 text-xs font-bold uppercase tracking-widest text-gray-400">Fold or Cut Here</span>
                     </div>
                 </template>
-
             </div>
         </template>
     </div>
 
-    <!-- Multi-State Floating Toast Notification -->
     <div id="toast" class="print:hidden fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
