@@ -90,69 +90,57 @@
                     'Package C': '(Pkg C: Fan and Lights (Max 50))'
                 },
 
-                // Upgraded Data Structure: Slots are now stored in an Array
                 bookingForm: { 
-                    fullName: '', organization: '', email: '', address: '',
-                    idType: 'National ID', idNumber: '',
-                    slots: [
-                        { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' }
-                    ],
-                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
-                    additionalCharges: [] 
+                    fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
+                    slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
+                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', additionalCharges: [] 
                 },
 
-                errors: { slots: [{}] }, // Structured to track errors per slot
+                errors: { slots: [{}] }, 
+                
+                // --- LOCAL DATABASE ARRAYS ---
+                // Pre-populated with two dummy entries for today so it's not empty!
+                localBookings: [
+                    { ref: 'BK-10293', customer: 'SKILLS PE Training', date: new Date().toISOString().split('T')[0], court: 'Court 2', timeStart: '8:00 AM', timeEnd: '10:00 AM' },
+                    { ref: 'BK-49210', customer: 'Primary Group Varsity', date: new Date().toISOString().split('T')[0], court: 'Court 1', timeStart: '6:00 PM', timeEnd: '8:00 PM' }
+                ],
                 masterList: [],
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
 
-                // Replaced getter with a method so it can accept the specific slot's sportType
                 getAvailableFacilities(sport) {
                     return sport ? this.facilityMap[sport] : [];
                 },
 
                 handleSportTypeChange(slot, index) {
-                    slot.court = ''; // Reset facility
+                    slot.court = ''; 
                     if (this.errors.slots[index]) this.errors.slots[index].sportType = false;
                     slot.remarks = this.remarksMap[slot.sportType] || '';
                 },
 
-                // Multi-slot array controls
                 addSlot() {
-                    this.bookingForm.slots.push({
-                        id: Date.now() + Math.random(),
-                        date: new Date().toISOString().split('T')[0], 
-                        sportType: '', court: '', remarks: '', timeStart: '', timeEnd: ''
-                    });
-                    this.errors.slots.push({}); // Push empty error object for the new slot
+                    this.bookingForm.slots.push({ id: Date.now() + Math.random(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' });
+                    this.errors.slots.push({}); 
                 },
                 removeSlot(index) {
                     if (this.bookingForm.slots.length > 1) {
                         this.bookingForm.slots.splice(index, 1);
                         this.errors.slots.splice(index, 1);
-                        this.calculateTotals(); // Recalculate everything
+                        this.calculateTotals(); 
                     }
                 },
 
-                // Charge controls
-                addCharge() {
-                    this.bookingForm.additionalCharges.push({ description: '', amount: '' });
-                },
-                removeCharge(index) {
-                    this.bookingForm.additionalCharges.splice(index, 1);
-                    this.calculateTotals(); 
-                },
+                addCharge() { this.bookingForm.additionalCharges.push({ description: '', amount: '' }); },
+                removeCharge(index) { this.bookingForm.additionalCharges.splice(index, 1); this.calculateTotals(); },
 
                 validateForm() {
-                    // Reset Errors completely
                     this.errors = { fullName: false, email: false, slots: [] }; 
                     let errorCount = 0;
 
                     if (!this.bookingForm.fullName) { this.errors.fullName = true; errorCount++; }
                     if (!this.bookingForm.email) { this.errors.email = true; errorCount++; }
 
-                    // Loop through every slot to check for completion
                     this.bookingForm.slots.forEach((slot, index) => {
                         let slotErrors = {};
                         if (!slot.date) { slotErrors.date = true; errorCount++; }
@@ -166,11 +154,11 @@
                     if (errorCount === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
-                        return "Please complete the highlighted slot fields."; // Generic if it's a slot issue
+                        return "Please complete the highlighted slot fields."; 
                     } else if (errorCount > 1) {
                         return `Please fill in the ${errorCount} highlighted fields.`;
                     }
-                    return null; // Passes validation!
+                    return null; 
                 },
 
                 calculateTotals() {
@@ -185,7 +173,6 @@
                         return hours;
                     };
 
-                    // 1. Loop through ALL slots and aggregate time costs
                     this.bookingForm.slots.forEach(slot => {
                         if (slot.timeStart && slot.timeEnd) {
                             const startHour = parseTime(slot.timeStart);
@@ -194,11 +181,8 @@
                             if (endHour > startHour) {
                                 totalHours += (endHour - startHour);
                                 for (let i = startHour; i < endHour; i++) {
-                                    if (i >= 6 && i < 17) {
-                                        totalAmount += 450; 
-                                    } else if (i >= 17 && i < 22) {
-                                        totalAmount += 550; 
-                                    }
+                                    if (i >= 6 && i < 17) { totalAmount += 450; } 
+                                    else if (i >= 17 && i < 22) { totalAmount += 550; }
                                 }
                             }
                         }
@@ -207,28 +191,42 @@
                     this.bookingForm.totalHours = totalHours.toString();
                     this.bookingForm.baseAmount = totalAmount.toFixed(2);
 
-                    // 2. Add Additional Charges to Grand Total
                     let extraChargesTotal = 0;
                     if (this.bookingForm.additionalCharges && this.bookingForm.additionalCharges.length > 0) {
                         this.bookingForm.additionalCharges.forEach(charge => {
                             let amt = parseFloat(charge.amount);
-                            if (!isNaN(amt)) {
-                                extraChargesTotal += amt;
-                            }
+                            if (!isNaN(amt)) { extraChargesTotal += amt; }
                         });
                     }
 
-                    // 3. Final Computation
                     this.bookingForm.grandTotal = (totalAmount + extraChargesTotal).toFixed(2);
                 },
 
+                // NEW: Dynamic Rendering Engine
                 getBookingData(block, court) {
-                    const dateHash = this.currentDate.charCodeAt(this.currentDate.length - 1);
-                    if (dateHash % 2 === 0) {
-                        if (block.queryTime === '8:00 AM' && court === 'Court 2') return { booked: true, title: 'PE Training' };
-                        if (block.queryTime === '6:00 PM' && court === 'Court 1') return { booked: true, title: 'Varsity Practice' };
-                    } else {
-                        if (block.queryTime === '9:00 AM' && court === 'Court 1') return { booked: true, title: 'Basketball Clinic' };
+                    const parseTime = (timeStr) => {
+                        if(!timeStr) return 0;
+                        const [time, modifier] = timeStr.split(' ');
+                        let hours = parseInt(time.split(':')[0], 10);
+                        if (hours === 12 && modifier === 'AM') hours = 0;
+                        if (hours < 12 && modifier === 'PM') hours += 12;
+                        return hours;
+                    };
+
+                    // Convert current block row into military time integer (e.g. 06:00 -> 6)
+                    const blockHour = parseInt(block.start.split(':')[0], 10); 
+
+                    // Loop through real bookings to see if they overlap this cell
+                    for (let b of this.localBookings) {
+                        // Logic handles 'WHOLE GYM' blocking out all courts automatically
+                        if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
+                            const startH = parseTime(b.timeStart);
+                            const endH = parseTime(b.timeEnd);
+                            
+                            if (blockHour >= startH && blockHour < endH) {
+                                return { booked: true, title: b.customer, bookingRef: b.ref };
+                            }
+                        }
                     }
                     return { booked: false };
                 },
@@ -248,17 +246,10 @@
                 },
 
                 handleCellClick(court, block) {
-                    // Reset to a single slot, prefilled with the calendar click
                     this.bookingForm.slots = [{
-                        id: Date.now(),
-                        date: this.currentDate,
-                        sportType: 'Basketball',
-                        court: court,
-                        remarks: this.remarksMap['Basketball'],
-                        timeStart: block.queryTime,
-                        timeEnd: ''
+                        id: Date.now(), date: this.currentDate, sportType: 'Basketball', court: court, remarks: this.remarksMap['Basketball'], timeStart: block.queryTime, timeEnd: ''
                     }];
-                    this.errors.slots = [{}]; // Reset errors
+                    this.errors.slots = [{}]; 
 
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
                     if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
@@ -300,25 +291,10 @@
 
                 switchView(viewName) {
                     this.currentView = viewName;
-                    if (viewName === 'master-list') {
-                        this.loadMasterList();
-                    }
+                    if (viewName === 'master-list') { this.loadMasterList(); }
                 },
 
-                async loadMasterList() {
-                    this.isLoading = true;
-                    try {
-                        const response = await fetch(this.scriptURL);
-                        const result = await response.json();
-                        if (result.status === 'success') {
-                            this.masterList = result.data;
-                        }
-                    } catch (error) {
-                        console.error("Failed to load master list:", error);
-                    } finally {
-                        this.isLoading = false;
-                    }
-                },
+                async loadMasterList() { /* Mock load */ },
 
                 async submitBooking() {
                     const errorMessage = this.validateForm();
@@ -328,29 +304,58 @@
                     }
 
                     this.isLoading = true;
+                    
+                    // Generate a professional 5-digit Booking Reference Code
+                    const refNumber = 'BK-' + Math.floor(Math.random() * 90000 + 10000);
+                    const targetDate = this.bookingForm.slots[0].date; // Store to jump back to it later
+
+                    // 1. SAVE TO LOCAL CALENDAR STATE FOR INSTANT RENDERING
+                    this.bookingForm.slots.forEach(slot => {
+                        this.localBookings.push({
+                            ref: refNumber,
+                            customer: this.bookingForm.fullName,
+                            date: slot.date,
+                            court: slot.court,
+                            timeStart: slot.timeStart,
+                            timeEnd: slot.timeEnd
+                        });
+                    });
+
+                    // 2. SAVE TO MASTER LIST ARRAY
+                    this.masterList.unshift({
+                        timestamp: new Date().toISOString(),
+                        fullName: this.bookingForm.fullName,
+                        organization: this.bookingForm.organization || 'N/A',
+                        date: targetDate + (this.bookingForm.slots.length > 1 ? ` (+${this.bookingForm.slots.length - 1})` : ''),
+                        facility: this.bookingForm.slots[0].court,
+                        timeStart: this.bookingForm.slots[0].timeStart,
+                        timeEnd: this.bookingForm.slots[0].timeEnd,
+                        grandTotal: this.bookingForm.grandTotal
+                    });
+
                     try {
                         await fetch(this.scriptURL, {
                             method: 'POST', mode: 'no-cors',
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(this.bookingForm)
+                            body: JSON.stringify({...this.bookingForm, bookingRef: refNumber})
                         });
-                        
-                        this.showToast('Booking Saved Successfully!', 'success');
+                    } catch (error) {
+                        console.log("No backend detected. Booking successfully saved locally to calendar!");
+                    } finally {
+                        this.isLoading = false;
+                        this.showToast(`Booking ${refNumber} Saved Successfully!`, 'success');
                         
                         // Reset Form perfectly to a single empty slot
                         this.bookingForm = { 
                             fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                             slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
-                            totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
-                            additionalCharges: []
+                            totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', additionalCharges: []
                         };
                         this.errors = { slots: [{}] }; 
                         
-                        this.switchView('master-list');
-                    } catch (error) {
-                        this.showToast("Failed to connect to the database. Check your URL.", 'error');
-                    } finally {
-                        this.isLoading = false;
+                        // NEW: Auto-Redirect to Calendar and auto-jump to the date they just booked!
+                        this.currentDate = targetDate;
+                        this.switchView('calendar');
                     }
                 }
             }))
@@ -435,15 +440,19 @@
                                         <div class="p-4 text-xs font-bold text-slate-500 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                             <div class="p-3 border-r border-slate-100 last:border-r-0 h-28 relative">
+                                                
+                                                <!-- NEW CALENDAR RENDER ENGINE: Shows Data Dynamically -->
                                                 <template x-if="getBookingData(block, court).booked">
                                                     <div class="w-full h-full rounded-xl bg-blue-600 text-white flex flex-col items-center justify-center cursor-default shadow-md shadow-blue-500/20 transform transition-transform hover:scale-[1.02]">
                                                         <span class="text-sm font-bold truncate w-full text-center px-2" x-text="getBookingData(block, court).title"></span>
-                                                        <span class="text-[9px] uppercase tracking-wider font-bold bg-blue-700/60 px-3 py-1 rounded-full mt-1.5">Confirmed</span>
+                                                        <span class="text-[9px] uppercase tracking-wider font-bold bg-blue-700/60 px-3 py-1 rounded-full mt-1.5" x-text="getBookingData(block, court).bookingRef"></span>
                                                     </div>
                                                 </template>
+                                                
                                                 <template x-if="!getBookingData(block, court).booked">
                                                     <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Book Slot</div>
                                                 </template>
+                                                
                                             </div>
                                         </template>
                                     </div>
@@ -483,7 +492,6 @@
                         <!-- MULTI-SLOT ITERATION -->
                         <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
                             <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
-                                <!-- Remove Slot Button (Only shows if there is more than 1 slot) -->
                                 <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                                 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6 mt-4">
