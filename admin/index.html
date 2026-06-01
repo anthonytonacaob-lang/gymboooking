@@ -101,10 +101,10 @@
                 bookingForm: { 
                     fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                     slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
-                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', additionalCharges: [] 
+                    totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', paymentReference: '', additionalCharges: [] 
                 },
 
-                errors: { slots: [{}] }, 
+                errors: { paymentReference: false, slots: [{}] }, 
                 
                 localBookings: [],
                 masterList: [],
@@ -147,11 +147,17 @@
                 removeCharge(index) { this.bookingForm.additionalCharges.splice(index, 1); this.calculateTotals(); },
 
                 validateForm() {
-                    this.errors = { fullName: false, email: false, slots: [] }; 
+                    this.errors = { fullName: false, email: false, paymentReference: false, slots: [] }; 
                     let errorCount = 0;
 
                     if (!this.bookingForm.fullName) { this.errors.fullName = true; errorCount++; }
                     if (!this.bookingForm.email) { this.errors.email = true; errorCount++; }
+
+                    // Reference Number Validation
+                    if (this.bookingForm.paymentMode !== 'Cash' && !this.bookingForm.paymentReference.trim()) {
+                        this.errors.paymentReference = true;
+                        errorCount++;
+                    }
 
                     this.bookingForm.slots.forEach((slot, index) => {
                         let slotErrors = {};
@@ -166,6 +172,7 @@
                     if (errorCount === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
+                        if (this.errors.paymentReference) return "Please enter the transaction reference number.";
                         return "Please complete the highlighted slot fields."; 
                     } else if (errorCount > 1) {
                         return `Please fill in the ${errorCount} highlighted fields.`;
@@ -302,7 +309,6 @@
                     if (viewName === 'master-list') { this.loadMasterList(); }
                 },
 
-                // PULL FROM GOOGLE SHEETS
                 async loadMasterList() {
                     if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) return;
                     this.isLoading = true;
@@ -315,12 +321,7 @@
                             let newLocalBookings = [];
                             result.data.forEach(item => {
                                 newLocalBookings.push({
-                                    ref: item.bookingRef || 'BK-LIVE',
-                                    customer: item.fullName,
-                                    date: item.date,
-                                    court: item.facility,
-                                    timeStart: item.timeStart,
-                                    timeEnd: item.timeEnd
+                                    ref: item.bookingRef || 'BK-LIVE', customer: item.fullName, date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
                                 });
                             });
                             this.localBookings = newLocalBookings;
@@ -335,7 +336,6 @@
                     }
                 },
 
-                // PUSH TO GOOGLE SHEETS
                 async submitBooking() {
                     const errorMessage = this.validateForm();
                     if (errorMessage) {
@@ -360,22 +360,30 @@
                         this.localBookings.push({
                             ref: refNumber, customer: this.bookingForm.fullName, date: slot.date, court: slot.court, timeStart: slot.timeStart, timeEnd: slot.timeEnd
                         });
-                        
-                        this.masterList.unshift({
-                            bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
-                            date: slot.date, facility: slot.court, timeStart: slot.timeStart, timeEnd: slot.timeEnd, grandTotal: this.bookingForm.grandTotal
-                        });
+                    });
+                    
+                    // Format payment mode safely so we don't have to change Google Sheet Columns
+                    const safePaymentString = this.bookingForm.paymentMode === 'Cash' 
+                        ? 'Cash' 
+                        : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
+
+                    this.masterList.unshift({
+                        bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
+                        date: targetDate + (this.bookingForm.slots.length > 1 ? ` (+${this.bookingForm.slots.length - 1})` : ''),
+                        facility: this.bookingForm.slots[0].court, timeStart: this.bookingForm.slots[0].timeStart, timeEnd: this.bookingForm.slots[0].timeEnd, grandTotal: this.bookingForm.grandTotal
                     });
 
                     // Cache to browser memory immediately (Resists accidental refreshes)
                     localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
                     localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
 
-                    // Push blindly to Google Sheet
+                    // Push payload to Google Sheet using the safely formatted payment string
+                    const backendPayload = { ...this.bookingForm, bookingRef: refNumber, paymentMode: safePaymentString };
+
                     try {
                         await fetch(this.scriptURL, {
                             method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({...this.bookingForm, bookingRef: refNumber})
+                            body: JSON.stringify(backendPayload)
                         });
                     } catch (error) {
                         console.log("Offline backup generated.");
@@ -395,12 +403,13 @@
                     this.showReceiptModal = false;
                     const targetDate = this.lastSavedBooking.slots[0].date;
                     
+                    // Full reset including the new reference string
                     this.bookingForm = { 
                         fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                         slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
-                        totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', additionalCharges: []
+                        totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', paymentReference: '', additionalCharges: []
                     };
-                    this.errors = { slots: [{}] }; 
+                    this.errors = { paymentReference: false, slots: [{}] }; 
                     this.lastSavedBooking = null;
 
                     this.currentDate = targetDate;
@@ -620,9 +629,20 @@
                             <input type="text" class="bg-transparent text-right text-4xl font-black text-blue-900 outline-none w-1/2" x-model="bookingForm.grandTotal" readonly>
                         </div>
 
-                        <div class="mb-10 w-1/2">
-                            <label class="form-label">Mode of Payment</label>
-                            <select class="form-input font-bold" x-model="bookingForm.paymentMode"><option>Cash</option><option>GCash</option><option>Bank Transfer</option></select>
+                        <div class="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="form-label">Mode of Payment</label>
+                                <select class="form-input font-bold" x-model="bookingForm.paymentMode" @change="if(bookingForm.paymentMode === 'Cash') { bookingForm.paymentReference = ''; errors.paymentReference = false; }">
+                                    <option>Cash</option>
+                                    <option>GCash</option>
+                                    <option>Bank Transfer</option>
+                                </select>
+                            </div>
+                            
+                            <div x-show="bookingForm.paymentMode !== 'Cash'" x-transition.opacity>
+                                <label class="form-label">Transaction Reference # <span class="text-red-500">*</span></label>
+                                <input type="text" class="form-input font-mono text-blue-700 font-bold tracking-widest" :class="errors.paymentReference ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. 10023456789" x-model="bookingForm.paymentReference" @input="errors.paymentReference = false">
+                            </div>
                         </div>
 
                         <button @click="submitBooking()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg">
@@ -757,9 +777,14 @@
                                     <span class="text-gray-500">Base Rental:</span>
                                     <span x-text="'PHP ' + lastSavedBooking.baseAmount"></span>
                                 </div>
-                                <div class="flex justify-between text-sm mb-3">
+                                <div class="flex justify-between text-sm mb-3 items-end">
                                     <span class="text-gray-500">Payment Mode:</span>
-                                    <span class="font-bold uppercase" x-text="lastSavedBooking.paymentMode"></span>
+                                    <div class="text-right">
+                                        <span class="font-bold uppercase block" x-text="lastSavedBooking.paymentMode"></span>
+                                        <template x-if="lastSavedBooking.paymentMode !== 'Cash' && lastSavedBooking.paymentReference">
+                                            <span class="text-xs text-gray-500 font-mono block mt-0.5" x-text="'Ref: ' + lastSavedBooking.paymentReference"></span>
+                                        </template>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between items-center border-t-2 border-black pt-2">
                                     <span class="font-bold uppercase tracking-wider">Grand Total</span>
