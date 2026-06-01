@@ -90,96 +90,119 @@
                     'Package C': '(Pkg C: Fan and Lights (Max 50))'
                 },
 
+                // Upgraded Data Structure: Slots are now stored in an Array
                 bookingForm: { 
                     fullName: '', organization: '', email: '', address: '',
                     idType: 'National ID', idNumber: '',
-                    date: new Date().toISOString().split('T')[0], sportType: '', court: '',
-                    remarks: '', timeStart: '', timeEnd: '',
+                    slots: [
+                        { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' }
+                    ],
                     totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
-                    additionalCharges: [] // Array to hold multiple charges
+                    additionalCharges: [] 
                 },
 
-                errors: {},
+                errors: { slots: [{}] }, // Structured to track errors per slot
                 masterList: [],
                 
                 // --- GOOGLE SHEETS WEB APP URL ---
                 scriptURL: 'https://script.google.com/macros/s/AKfycbyp8KQKlWHpeygUjPNnCtcOZtl5y6uLLObRnWUvabQHFwGdYrPJlXe4RNgJ24znopZ5XQ/exec',
 
-                get availableFacilities() {
-                    return this.bookingForm.sportType ? this.facilityMap[this.bookingForm.sportType] : [];
+                // Replaced getter with a method so it can accept the specific slot's sportType
+                getAvailableFacilities(sport) {
+                    return sport ? this.facilityMap[sport] : [];
                 },
 
-                handleSportTypeChange() {
-                    this.bookingForm.court = '';
-                    this.errors.sportType = false;
-                    this.bookingForm.remarks = this.remarksMap[this.bookingForm.sportType] || '';
+                handleSportTypeChange(slot, index) {
+                    slot.court = ''; // Reset facility
+                    if (this.errors.slots[index]) this.errors.slots[index].sportType = false;
+                    slot.remarks = this.remarksMap[slot.sportType] || '';
                 },
 
-                // Push a new empty charge object to the array
+                // Multi-slot array controls
+                addSlot() {
+                    this.bookingForm.slots.push({
+                        id: Date.now() + Math.random(),
+                        date: new Date().toISOString().split('T')[0], 
+                        sportType: '', court: '', remarks: '', timeStart: '', timeEnd: ''
+                    });
+                    this.errors.slots.push({}); // Push empty error object for the new slot
+                },
+                removeSlot(index) {
+                    if (this.bookingForm.slots.length > 1) {
+                        this.bookingForm.slots.splice(index, 1);
+                        this.errors.slots.splice(index, 1);
+                        this.calculateTotals(); // Recalculate everything
+                    }
+                },
+
+                // Charge controls
                 addCharge() {
                     this.bookingForm.additionalCharges.push({ description: '', amount: '' });
                 },
-
-                // Remove a specific charge object from the array
                 removeCharge(index) {
                     this.bookingForm.additionalCharges.splice(index, 1);
-                    this.calculateTotals(); // Recalculate grand total when removed
+                    this.calculateTotals(); 
                 },
 
                 validateForm() {
-                    this.errors = {}; 
-                    let count = 0;
+                    // Reset Errors completely
+                    this.errors = { fullName: false, email: false, slots: [] }; 
+                    let errorCount = 0;
 
-                    if (!this.bookingForm.fullName) { this.errors.fullName = true; count++; }
-                    if (!this.bookingForm.email) { this.errors.email = true; count++; }
-                    if (!this.bookingForm.date) { this.errors.date = true; count++; }
-                    if (!this.bookingForm.sportType) { this.errors.sportType = true; count++; }
-                    if (!this.bookingForm.court) { this.errors.court = true; count++; }
-                    if (!this.bookingForm.timeStart) { this.errors.timeStart = true; count++; }
-                    if (!this.bookingForm.timeEnd) { this.errors.timeEnd = true; count++; }
+                    if (!this.bookingForm.fullName) { this.errors.fullName = true; errorCount++; }
+                    if (!this.bookingForm.email) { this.errors.email = true; errorCount++; }
 
-                    if (count === 1) {
+                    // Loop through every slot to check for completion
+                    this.bookingForm.slots.forEach((slot, index) => {
+                        let slotErrors = {};
+                        if (!slot.date) { slotErrors.date = true; errorCount++; }
+                        if (!slot.sportType) { slotErrors.sportType = true; errorCount++; }
+                        if (!slot.court) { slotErrors.court = true; errorCount++; }
+                        if (!slot.timeStart) { slotErrors.timeStart = true; errorCount++; }
+                        if (!slot.timeEnd) { slotErrors.timeEnd = true; errorCount++; }
+                        this.errors.slots[index] = slotErrors;
+                    });
+
+                    if (errorCount === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
-                        if (this.errors.date) return "Event Date is required.";
-                        if (this.errors.sportType) return "Sport Type / Package is required.";
-                        if (this.errors.court) return "Facility selection is required.";
-                        if (this.errors.timeStart) return "Start Time is required.";
-                        if (this.errors.timeEnd) return "End Time is required.";
-                    } else if (count > 1) {
-                        return `Please fill in the ${count} highlighted fields.`;
+                        return "Please complete the highlighted slot fields."; // Generic if it's a slot issue
+                    } else if (errorCount > 1) {
+                        return `Please fill in the ${errorCount} highlighted fields.`;
                     }
-                    return null;
+                    return null; // Passes validation!
                 },
 
                 calculateTotals() {
                     let totalAmount = 0;
                     let totalHours = 0;
 
-                    // 1. Calculate Base Time Costs
-                    if (this.bookingForm.timeStart && this.bookingForm.timeEnd) {
-                        const parseTime = (timeStr) => {
-                            const [time, modifier] = timeStr.split(' ');
-                            let hours = parseInt(time.split(':')[0], 10);
-                            if (hours === 12 && modifier === 'AM') hours = 0;
-                            if (hours < 12 && modifier === 'PM') hours += 12;
-                            return hours;
-                        };
+                    const parseTime = (timeStr) => {
+                        const [time, modifier] = timeStr.split(' ');
+                        let hours = parseInt(time.split(':')[0], 10);
+                        if (hours === 12 && modifier === 'AM') hours = 0;
+                        if (hours < 12 && modifier === 'PM') hours += 12;
+                        return hours;
+                    };
 
-                        const startHour = parseTime(this.bookingForm.timeStart);
-                        const endHour = parseTime(this.bookingForm.timeEnd);
+                    // 1. Loop through ALL slots and aggregate time costs
+                    this.bookingForm.slots.forEach(slot => {
+                        if (slot.timeStart && slot.timeEnd) {
+                            const startHour = parseTime(slot.timeStart);
+                            const endHour = parseTime(slot.timeEnd);
 
-                        if (endHour > startHour) {
-                            totalHours = endHour - startHour;
-                            for (let i = startHour; i < endHour; i++) {
-                                if (i >= 6 && i < 17) {
-                                    totalAmount += 450; 
-                                } else if (i >= 17 && i < 22) {
-                                    totalAmount += 550; 
+                            if (endHour > startHour) {
+                                totalHours += (endHour - startHour);
+                                for (let i = startHour; i < endHour; i++) {
+                                    if (i >= 6 && i < 17) {
+                                        totalAmount += 450; 
+                                    } else if (i >= 17 && i < 22) {
+                                        totalAmount += 550; 
+                                    }
                                 }
                             }
                         }
-                    }
+                    });
 
                     this.bookingForm.totalHours = totalHours.toString();
                     this.bookingForm.baseAmount = totalAmount.toFixed(2);
@@ -225,15 +248,21 @@
                 },
 
                 handleCellClick(court, block) {
-                    this.bookingForm.sportType = 'Basketball'; 
-                    this.handleSportTypeChange(); 
-                    this.bookingForm.court = court;
-                    this.bookingForm.date = this.currentDate;
-                    this.bookingForm.timeStart = block.queryTime;
+                    // Reset to a single slot, prefilled with the calendar click
+                    this.bookingForm.slots = [{
+                        id: Date.now(),
+                        date: this.currentDate,
+                        sportType: 'Basketball',
+                        court: court,
+                        remarks: this.remarksMap['Basketball'],
+                        timeStart: block.queryTime,
+                        timeEnd: ''
+                    }];
+                    this.errors.slots = [{}]; // Reset errors
 
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
                     if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
-                        this.bookingForm.timeEnd = this.timeOptions[startIndex + 1];
+                        this.bookingForm.slots[0].timeEnd = this.timeOptions[startIndex + 1];
                     }
 
                     this.calculateTotals();
@@ -308,14 +337,14 @@
                         
                         this.showToast('Booking Saved Successfully!', 'success');
                         
-                        // Reset Form perfectly, including array clearing
+                        // Reset Form perfectly to a single empty slot
                         this.bookingForm = { 
                             fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
-                            date: new Date().toISOString().split('T')[0], sportType: '', court: '',
-                            remarks: '', timeStart: '', timeEnd: '', totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
+                            slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
+                            totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash',
                             additionalCharges: []
                         };
-                        this.errors = {}; 
+                        this.errors = { slots: [{}] }; 
                         
                         this.switchView('master-list');
                     } catch (error) {
@@ -332,6 +361,7 @@
 
     <div class="flex h-screen overflow-hidden">
         
+        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -344,6 +374,7 @@
             </nav>
         </aside>
 
+        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -351,6 +382,7 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">PROCESSING...</span>
             </div>
 
+            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -364,6 +396,7 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
+                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -377,6 +410,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
@@ -419,10 +453,12 @@
                     </div>
                 </div>
 
+                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
                         
+                        <!-- Customer Details (Static) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-10">
                             <div>
                                 <label class="form-label">Full Name <span class="text-red-500">*</span></label>
@@ -444,60 +480,61 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
-                            <button class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6 mt-4">
-                                <div>
-                                    <label class="form-label">Date of Event <span class="text-red-500">*</span></label>
-                                    <input type="date" class="form-input" :class="errors.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.date" @change="errors.date = false">
-                                </div>
+                        <!-- MULTI-SLOT ITERATION -->
+                        <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
+                                <!-- Remove Slot Button (Only shows if there is more than 1 slot) -->
+                                <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
                                 
-                                <div>
-                                    <label class="form-label">Sport Type / Package <span class="text-red-500">*</span></label>
-                                    <select class="form-input" :class="errors.sportType ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.sportType" @change="handleSportTypeChange()">
-                                        <option value="" disabled>Select option...</option>
-                                        <option>Basketball</option>
-                                        <option>Volleyball</option>
-                                        <option>Badminton</option>
-                                        <option>Package A</option>
-                                        <option>Package B</option>
-                                        <option>Package C</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label">Select Facility <span class="text-red-500">*</span></label>
-                                    <select class="form-input" :class="errors.court ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.court" :disabled="!bookingForm.sportType" @change="errors.court = false">
-                                        <option value="" disabled>Select facility...</option>
-                                        <template x-for="fac in availableFacilities" :key="fac">
-                                            <option x-text="fac" :value="fac"></option>
-                                        </template>
-                                    </select>
-                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6 mt-4">
+                                    <div>
+                                        <label class="form-label">Date of Event <span class="text-red-500">*</span></label>
+                                        <input type="date" class="form-input" :class="errors.slots[index]?.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.date" @change="if(errors.slots[index]) errors.slots[index].date = false">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="form-label">Sport Type / Package <span class="text-red-500">*</span></label>
+                                        <select class="form-input" :class="errors.slots[index]?.sportType ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)">
+                                            <option value="" disabled>Select option...</option>
+                                            <option>Basketball</option><option>Volleyball</option><option>Badminton</option>
+                                            <option>Package A</option><option>Package B</option><option>Package C</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Select Facility <span class="text-red-500">*</span></label>
+                                        <select class="form-input" :class="errors.slots[index]?.court ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="if(errors.slots[index]) errors.slots[index].court = false">
+                                            <option value="" disabled>Select facility...</option>
+                                            <template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac">
+                                                <option x-text="fac" :value="fac"></option>
+                                            </template>
+                                        </select>
+                                    </div>
 
-                                <div class="col-span-1 md:col-span-3">
-                                    <label class="form-label">Remarks & Inclusions</label>
-                                    <input type="text" class="form-input font-medium text-slate-700" placeholder="e.g. Regular Game (Max 20 pax)." x-model="bookingForm.remarks">
-                                </div>
-                                
-                                <div>
-                                    <label class="form-label">Time Started <span class="text-red-500">*</span></label>
-                                    <select class="form-input font-semibold" :class="errors.timeStart ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.timeStart" @change="calculateTotals(); errors.timeStart = false">
-                                        <option value="" disabled>Select start time...</option>
-                                        <template x-for="time in timeOptions.slice(0, -1)" :key="time"><option x-text="time" :value="time"></option></template>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label">Time Ended <span class="text-red-500">*</span></label>
-                                    <select class="form-input font-semibold" :class="errors.timeEnd ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="bookingForm.timeEnd" @change="calculateTotals(); errors.timeEnd = false">
-                                        <option value="" disabled>Select end time...</option>
-                                        <template x-for="time in timeOptions.slice(1)" :key="time"><option x-text="time" :value="time"></option></template>
-                                    </select>
+                                    <div class="col-span-1 md:col-span-3">
+                                        <label class="form-label">Remarks & Inclusions</label>
+                                        <input type="text" class="form-input font-medium text-slate-700" placeholder="e.g. Regular Game (Max 20 pax)." x-model="slot.remarks">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="form-label">Time Started <span class="text-red-500">*</span></label>
+                                        <select class="form-input font-semibold" :class="errors.slots[index]?.timeStart ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.timeStart" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeStart = false">
+                                            <option value="" disabled>Select start time...</option>
+                                            <template x-for="time in timeOptions.slice(0, -1)" :key="time"><option x-text="time" :value="time"></option></template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Time Ended <span class="text-red-500">*</span></label>
+                                        <select class="form-input font-semibold" :class="errors.slots[index]?.timeEnd ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false">
+                                            <option value="" disabled>Select end time...</option>
+                                            <template x-for="time in timeOptions.slice(1)" :key="time"><option x-text="time" :value="time"></option></template>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </template>
 
-                        <button class="w-full py-4 mb-10 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex justify-center items-center">
+                        <!-- Add Slot Button -->
+                        <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex justify-center items-center">
                             + Add Another Booking Slot
                         </button>
 
@@ -506,6 +543,7 @@
                             <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600" x-model="bookingForm.baseAmount" readonly></div>
                         </div>
 
+                        <!-- DYNAMIC ADDITIONAL CHARGES UI -->
                         <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 bg-white">
                             <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-6' : ''">
                                 <div>
@@ -551,6 +589,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -596,6 +635,7 @@
         </div>
     </div>
 
+    <!-- Multi-State Floating Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
