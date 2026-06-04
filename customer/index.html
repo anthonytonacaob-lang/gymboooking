@@ -39,10 +39,11 @@
         }
         .ambient-gradient { background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%); background-attachment: fixed; }
         
-        /* Custom scrollbar for form */
+        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
     
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -50,8 +51,8 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('customerApp', () => ({
-                currentView: 'welcome', // 'welcome', 'booking-form', or 'success'
-                isLoading: false,
+                currentView: 'welcome', 
+                isLoading: true, // Start loading immediately to fetch calendar
                 currentDate: new Date().toISOString().split('T')[0],
                 
                 // =======================================================
@@ -59,7 +60,26 @@
                 // =======================================================
                 scriptURL: 'https://script.google.com/macros/s/AKfycbzG8CdJ0bjGzzdeoIQiOQ4lnq8hWqmSZiDP7FP_czqlhR59WuDHcUrkidFZWbSmpL8yug/exec',
                 
-                bookingCategory: 'Regular', // Tracks user path choice
+                bookingCategory: 'Regular', 
+                localBookings: [], // Stores public calendar data securely
+
+                timeBlocks: [
+                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
+                    { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
+                    { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' },
+                    { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' },
+                    { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' },
+                    { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' },
+                    { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' },
+                    { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
+                    { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' },
+                    { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' },
+                    { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' },
+                    { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' },
+                    { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' },
+                    { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' },
+                    { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
+                ],
 
                 timeOptions: [
                     '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
@@ -67,13 +87,11 @@
                     '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
                 ],
 
-                // Dynamic options based on path
                 sportOptions: {
                     'Regular': ['Basketball', 'Volleyball', 'Badminton'],
                     'Special': ['Package A', 'Package B', 'Package C']
                 },
 
-                // Restricts courts based on selected sport
                 facilityMap: {
                     'Basketball': ['Court 1', 'Court 2', 'Court 3'],
                     'Volleyball': ['Court 1', 'Court 3'],
@@ -87,22 +105,78 @@
                     fullName: '', email: '', organization: '', sportType: '', 
                     court: '', timeStart: '', timeEnd: '', paymentMode: 'GCash', paymentReference: ''
                 },
-                
                 errors: {},
+
+                // INITIALIZE: Fetch Live Data
+                init() {
+                    this.fetchCalendarData();
+                },
+
+                async fetchCalendarData() {
+                    if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) {
+                        this.isLoading = false;
+                        return;
+                    }
+                    try {
+                        const response = await fetch(this.scriptURL);
+                        const result = await response.json();
+                        if (result.status === 'success' && result.data) {
+                            let secureBookings = [];
+                            result.data.forEach(item => {
+                                // Extract ONLY necessary data to protect privacy
+                                secureBookings.push({
+                                    date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
+                                });
+                            });
+                            this.localBookings = secureBookings;
+                        }
+                    } catch (error) {
+                        console.error("Calendar sync failed.");
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                parseTimeInt(timeStr) {
+                    if(!timeStr) return 0;
+                    const [time, modifier] = timeStr.split(' ');
+                    let hours = parseInt(time.split(':')[0], 10);
+                    if (hours === 12 && modifier === 'AM') hours = 0;
+                    if (hours < 12 && modifier === 'PM') hours += 12;
+                    return hours;
+                },
+
+                getBookingData(block, court) {
+                    const blockHour = parseInt(block.start.split(':')[0], 10); 
+                    for (let b of this.localBookings) {
+                        if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
+                            const startH = this.parseTimeInt(b.timeStart);
+                            const endH = this.parseTimeInt(b.timeEnd);
+                            if (blockHour >= startH && blockHour < endH) {
+                                return { booked: true };
+                            }
+                        }
+                    }
+                    return { booked: false };
+                },
+
+                changeDay(offset) {
+                    let dateObj = new Date(this.currentDate);
+                    dateObj.setDate(dateObj.getDate() + offset);
+                    this.currentDate = dateObj.toISOString().split('T')[0];
+                },
 
                 getAvailableFacilities(sport) { 
                     return sport ? this.facilityMap[sport] : []; 
                 },
 
                 handleSportTypeChange() {
-                    // Auto-select court if only one is available, otherwise reset
                     const availableCourts = this.getAvailableFacilities(this.form.sportType);
                     this.form.court = availableCourts.length === 1 ? availableCourts[0] : '';
                 },
 
                 initiateBooking(type) {
                     this.bookingCategory = type;
-                    // Pre-fill the first logical options based on their path
                     if(type === 'Regular') {
                         this.form.sportType = 'Basketball';
                         this.form.court = 'Court 1';
@@ -113,9 +187,22 @@
                     this.currentView = 'booking-form';
                 },
 
-                goBack() {
-                    this.currentView = 'welcome';
+                // NEW: Click an available slot on the calendar to fast-book
+                fastBookSlot(court, block) {
+                    this.bookingCategory = 'Regular';
+                    this.form.sportType = 'Basketball'; // Default for quick clicks
+                    this.form.court = court;
+                    this.form.timeStart = block.queryTime;
+                    
+                    const startIndex = this.timeOptions.indexOf(block.queryTime);
+                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
+                        this.form.timeEnd = this.timeOptions[startIndex + 1];
+                    }
+                    
+                    this.currentView = 'booking-form';
                 },
+
+                goBack() { this.currentView = 'welcome'; },
 
                 validateForm() {
                     this.errors = {};
@@ -131,66 +218,37 @@
                     return isValid;
                 },
 
-                // Live total calculator
                 get estimatedTotal() {
                     if(!this.form.timeStart || !this.form.timeEnd) return "0.00";
-                    
                     let startIdx = this.timeOptions.indexOf(this.form.timeStart);
                     let endIdx = this.timeOptions.indexOf(this.form.timeEnd);
                     if(startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return "0.00";
-                    
                     let hours = endIdx - startIdx;
                     let dayRate = 450;
-                    
-                    // Match admin pricing logic
                     if (this.form.sportType === 'Package A') dayRate = 1500;
                     else if (this.form.sportType === 'Package B') dayRate = 600;
                     else if (this.form.sportType === 'Package C') dayRate = 550;
-                    
                     return (hours * dayRate).toFixed(2);
                 },
 
                 async submitRequest() {
                     if(!this.validateForm()) return;
-                    
                     this.isLoading = true;
                     
-                    // Generate Reference Number
                     const refNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
                     const safePaymentString = this.form.paymentMode === 'Cash' ? 'Cash' : `${this.form.paymentMode} (Ref: ${this.form.paymentReference})`;
                     
-                    // Map data precisely to Admin Portal Backend structure
                     const payload = {
-                        bookingRef: refNumber,
-                        fullName: this.form.fullName,
-                        email: this.form.email,
-                        organization: this.form.organization || 'Customer Portal Request',
-                        address: 'Online Submission',
-                        idType: 'N/A',
-                        idNumber: 'N/A',
-                        paymentMode: safePaymentString,
-                        baseAmount: this.estimatedTotal,
-                        grandTotal: this.estimatedTotal,
-                        additionalCharges: [],
-                        slots: [{
-                            date: this.currentDate,
-                            sportType: this.form.sportType,
-                            court: this.form.court,
-                            timeStart: this.form.timeStart,
-                            timeEnd: this.form.timeEnd,
-                            remarks: 'Submitted via Public Portal'
-                        }]
+                        bookingRef: refNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
+                        address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: safePaymentString, baseAmount: this.estimatedTotal,
+                        grandTotal: this.estimatedTotal, additionalCharges: [],
+                        slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Submitted via Public Portal' }]
                     };
 
                     try {
-                        await fetch(this.scriptURL, {
-                            method: 'POST',
-                            mode: 'no-cors', 
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(payload)
-                        });
-                        // Because of no-cors, we assume success if fetch executes
+                        await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
                         this.currentView = 'success';
+                        this.fetchCalendarData(); // Refresh calendar to show their new block
                     } catch (error) {
                         alert("There was a connection issue sending your request. Please try again.");
                     } finally {
@@ -220,38 +278,72 @@
         <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;" x-transition.opacity>
             <div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center">
                 <svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Routing Request...</span>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span>
             </div>
         </div>
 
         <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-8 lg:gap-16 xl:gap-20 items-center">
             
+            <!-- LEFT COLUMN: Live Calendar -->
             <div class="w-full lg:w-7/12 flex flex-col">
                 <div class="flex items-center mb-4">
-                    <div class="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-white flex items-center gap-4">
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-brand-blue mb-1">Target Date</label>
-                        </div>
-                        <input type="date" class="form-input text-brand-dark w-44 py-2" x-model="currentDate">
+                    <div class="bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-white flex items-center gap-3">
+                        <button @click="changeDay(-1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&lt;</button>
+                        <input type="date" class="border-none text-sm font-bold text-brand-dark px-2 h-full text-center outline-none bg-transparent w-36 cursor-pointer" x-model="currentDate">
+                        <button @click="changeDay(1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&gt;</button>
                     </div>
                 </div>
 
-                <div class="w-full h-[500px] lg:h-[650px] bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-saas border-2 border-white/80 flex items-center justify-center relative overflow-hidden transition-all duration-300">
-                    <div class="text-center">
-                        <div class="w-20 h-20 bg-brand-soft rounded-full flex items-center justify-center mx-auto mb-4 text-brand-blue shadow-sm">
-                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <!-- NEW: Integrated Calendar UI -->
+                <div class="w-full h-[500px] lg:h-[650px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
+                    <div class="overflow-y-auto overflow-x-auto flex-1 hide-scroll">
+                        <div class="min-w-[500px]">
+                            <!-- Header row -->
+                            <div class="grid grid-cols-[90px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
+                                <div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 2</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div>
+                            </div>
+                            
+                            <!-- Calendar Grid Generation -->
+                            <template x-for="block in timeBlocks" :key="block.start">
+                                <div class="grid grid-cols-[90px_1fr_1fr_1fr] border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors">
+                                    <div class="p-2 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center whitespace-nowrap" x-text="block.label.split(' - ')[0]"></div>
+                                    
+                                    <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
+                                        <div class="p-1.5 border-l border-slate-100 h-16 relative">
+                                            
+                                            <!-- Booked Slot -->
+                                            <template x-if="getBookingData(block, court).booked">
+                                                <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
+                                                    <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Available Slot (Clickable) -->
+                                            <template x-if="!getBookingData(block, court).booked">
+                                                <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
+                                                    <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
+                                                    <span class="absolute opacity-100 group-hover:opacity-0 transition-opacity tracking-wide">Available</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
                         </div>
-                        <h2 class="text-2xl font-bold text-slate-400 tracking-tight">Public Calendar</h2>
-                        <p class="text-sm text-slate-400 mt-2 font-medium">Availability viewing coming soon.</p>
                     </div>
                 </div>
             </div>
 
+            <!-- RIGHT COLUMN: Interaction Panel -->
             <div class="w-full lg:w-5/12 relative h-[550px] lg:h-[650px]">
                 
+                <!-- STATE 1: SELECTION MENU -->
                 <div x-show="currentView === 'welcome'" x-transition.opacity class="absolute inset-0 flex flex-col justify-center text-center lg:text-left">
                     <h1 class="text-5xl lg:text-6xl font-black text-brand-dark tracking-tight mb-4 leading-tight">Welcome to <br>SKILLS Gym</h1>
-                    <p class="text-lg text-slate-500 font-medium mb-12">What can I help you book today?</p>
+                    <p class="text-lg text-slate-500 font-medium mb-12">Select an option or click an available slot on the calendar to begin.</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full h-48">
                         <button @click="initiateBooking('Regular')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 group">
@@ -271,6 +363,7 @@
                     </div>
                 </div>
 
+                <!-- STATE 2: DYNAMIC BOOKING FORM -->
                 <div x-show="currentView === 'booking-form'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 shrink-0">
                         <div>
@@ -282,7 +375,7 @@
                         </button>
                     </div>
                     
-                    <div class="space-y-4 flex-1 overflow-y-auto pr-2 pb-2">
+                    <div class="space-y-4 flex-1 overflow-y-auto pr-2 pb-2 hide-scroll">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label class="form-label">Full Name *</label><input type="text" class="form-input bg-slate-50" :class="errors.fullName ? '!border-red-400 bg-red-50' : ''" placeholder="Juan Dela Cruz" x-model="form.fullName"></div>
                             <div><label class="form-label">Organization</label><input type="text" class="form-input bg-slate-50" placeholder="Optional" x-model="form.organization"></div>
@@ -357,6 +450,7 @@
                     </button>
                 </div>
 
+                <!-- STATE 3: SUCCESS CONFIRMATION -->
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
