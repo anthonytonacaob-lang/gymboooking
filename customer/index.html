@@ -1,1 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Portal | SKILLS Gym</title>
+    
+    <!-- Import 'Inter' Font for the Premium SaaS Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#2D5DF6',      
+                            blueHover: '#1B44C8',
+                            dark: '#0F172A',      
+                            soft: '#F3F6FD'       
+                        }
+                    },
+                    boxShadow: {
+                        'saas': '0 20px 40px -15px rgba(0,0,0,0.03)',
+                        'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.12)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer components {
+            .form-input { 
+                @apply rounded-2xl border border-slate-200/80 bg-white py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/15 sm:text-sm font-bold shadow-sm; 
+            }
+            input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
+            input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+        }
 
+        .ambient-gradient {
+            background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%);
+            background-attachment: fixed;
+        }
+    </style>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('customerApp', () => ({
+                currentDate: new Date().toISOString().split('T')[0],
+                
+                selectDate(date) {
+                    this.currentDate = date;
+                    // Logic to fetch availability for this date will go here
+                },
+                
+                initiateBooking(type) {
+                    // Logic to open booking modal/form based on Regular or Special Event
+                    console.log("Initiating booking for: " + type);
+                }
+            }))
+        })
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased ambient-gradient min-h-screen selection:bg-brand-blue/20 selection:text-brand-blue" x-data="customerApp">
+
+    <!-- Navbar / Branding -->
+    <nav class="absolute top-0 left-0 w-full p-6 lg:px-12 flex items-center justify-between z-20">
+        <div class="flex items-center">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-4 shadow-lg shadow-brand-blue/30">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-tight text-brand-dark leading-none">SKILLS Gym</h1>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Facility Rentals</p>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Layout Container -->
+    <div class="min-h-screen flex items-center justify-center p-6 pt-28 lg:pt-6 lg:p-12">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
+            
+            <!-- LEFT COLUMN: Date Selector & Live Calendar Area -->
+            <div class="w-full lg:w-7/12 flex flex-col">
+                
+                <!-- Date Selector Header -->
+                <div class="flex items-center mb-4">
+                    <div class="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-white flex items-center gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Date</label>
+                            <span class="text-[10px] text-slate-400 italic">(customer select date)</span>
+                        </div>
+                        <input type="date" class="form-input text-brand-dark w-44" x-model="currentDate" @change="selectDate($event.target.value)">
+                    </div>
+                </div>
+
+                <!-- Live Calendar Placeholder -->
+                <div class="w-full h-[500px] lg:h-[650px] bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-saas border-2 border-white/80 flex items-center justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-floating">
+                    <div class="text-center">
+                        <div class="w-20 h-20 bg-brand-soft rounded-full flex items-center justify-center mx-auto mb-4 text-brand-blue group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-400 tracking-tight">Live Calendar</h2>
+                        <p class="text-sm text-slate-400 mt-2 font-medium">Available slots will render here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Welcome Message & Booking Actions -->
+            <div class="w-full lg:w-5/12 flex flex-col text-center lg:text-left">
+                
+                <h1 class="text-5xl lg:text-6xl font-black text-brand-dark tracking-tight mb-4 leading-tight">
+                    Welcome to <br>SKILLS Gym
+                </h1>
+                
+                <p class="text-lg lg:text-xl text-slate-500 font-medium mb-12">
+                    What can I help you today?
+                </p>
+
+                <!-- Action Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+                    
+                    <!-- Option 1: Regular Court -->
+                    <button @click="initiateBooking('Regular')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-8 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-2 group h-full">
+                        <div class="w-16 h-16 rounded-2xl bg-brand-soft text-brand-blue flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-slate-100">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-black text-brand-dark mb-3">Book Regular Court</h3>
+                        <p class="text-[11px] text-slate-400 uppercase tracking-widest font-bold leading-relaxed">
+                            (Maximum of 20 attendees)
+                        </p>
+                    </button>
+                    
+                    <!-- Option 2: Special Event -->
+                    <button @click="initiateBooking('Special')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-8 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-2 group h-full">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-amber-100/50">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-black text-brand-dark mb-3">Book Special Event</h3>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold leading-relaxed">
+                            (Intramurals, Sportfest (Liga), Graduation, etc.)
+                        </p>
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
