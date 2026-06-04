@@ -5,13 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal | SKILLS Gym Rental</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
                     colors: {
-                        primary: { blueStart: '#007bff', blueEnd: '#00d2ff', orangeStart: '#ff8c00', orangeEnd: '#e65100', formBlue: '#3b82f6' }
+                        brand: {
+                            blue: '#2D5DF6',      /* Airtable Vibrant Blue */
+                            blueHover: '#1B44C8',
+                            dark: '#0F172A',      /* Deep Navy for Text */
+                            soft: '#F3F6FD'       /* Light blue-gray for inputs */
+                        }
+                    },
+                    boxShadow: {
+                        'saas': '0 20px 40px -15px rgba(0,0,0,0.05)',
+                        'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.15)',
                     }
                 }
             }
@@ -21,19 +37,31 @@
     <style type="text/tailwindcss">
         @layer components {
             .form-input { 
-                @apply w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 px-4 text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100; 
+                @apply w-full rounded-2xl border border-slate-200/80 bg-brand-soft py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:bg-white focus:ring-4 focus:ring-brand-blue/15 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100 font-medium; 
             }
             .form-label { 
-                @apply mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500; 
+                @apply mb-2.5 block text-xs font-bold uppercase tracking-widest text-slate-500; 
             }
             select.form-input {
                 @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:cursor-not-allowed;
-                background-position: right 1rem center;
+                background-position: right 1.25rem center;
                 background-size: 1.2em 1.2em;
                 background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
             }
             input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
             input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+            
+            /* Custom Scrollbar for a polished look */
+            ::-webkit-scrollbar { width: 8px; height: 8px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+            ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        }
+
+        /* Ambient Background Gradient to match the image */
+        .ambient-gradient {
+            background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%);
+            background-attachment: fixed;
         }
 
         @media print {
@@ -86,7 +114,7 @@
                     'Badminton': ['Court 2'],
                     'Package A': ['WHOLE GYM'],
                     'Package B': ['Court 1'],
-                    'Package C': ['Court 1', 'Court 2', 'Court 3']
+                    'Package C': ['ALL 3 COURTS']
                 },
 
                 remarksMap: {
@@ -95,7 +123,7 @@
                     'Badminton': 'Regular Game (Max. 20)',
                     'Package A': '(Whole Gym (3 courts), Bleachers, Fan, Lights.)',
                     'Package B': '(Exclusive use of Bleachers, Fan, Lights (Max 80))',
-                    'Package C': '(Fan and Lights (Max 50))'
+                    'Package C': '(Pkg C: Fan and Lights (Max 50))'
                 },
 
                 bookingForm: { 
@@ -138,7 +166,7 @@
                     slot.court = ''; 
                     if (this.errors.slots[index]) this.errors.slots[index].sportType = false;
                     slot.remarks = this.remarksMap[slot.sportType] || '';
-                    this.calculateTotals(); // Trigger recalculation when type changes
+                    this.calculateTotals();
                 },
 
                 addSlot() {
@@ -221,7 +249,6 @@
                     return null; 
                 },
 
-                // UPGRADED METHOD: Dynamic package pricing logic matrix
                 calculateTotals() {
                     let totalAmount = 0;
                     let totalHours = 0;
@@ -234,7 +261,6 @@
                             if (endHour > startHour) {
                                 totalHours += (endHour - startHour);
                                 
-                                // Set specific tiered dynamic variables
                                 let dayRate = 450;
                                 let eveRate = 550;
 
@@ -293,13 +319,13 @@
                     let dateObj = new Date(this.currentDate);
                     dateObj.setDate(dateObj.getDate() + offset);
                     this.currentDate = dateObj.toISOString().split('T')[0];
-                    setTimeout(() => { this.isLoading = false; }, 400);
+                    setTimeout(() => { this.isLoading = false; }, 300);
                 },
 
                 fetchAvailabilityForDate(date) {
                     this.isLoading = true;
                     this.currentDate = date;
-                    setTimeout(() => { this.isLoading = false; }, 400);
+                    setTimeout(() => { this.isLoading = false; }, 300);
                 },
 
                 handleCellClick(court, block) {
@@ -325,15 +351,19 @@
                     toastMsg.innerText = msg;
                     
                     if (type === 'error') {
-                        toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-red-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-red-600`;
+                        toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-white text-slate-800 px-6 py-4 rounded-2xl shadow-floating flex items-center border border-red-100`;
                         toastTitle.innerText = "Action Required";
-                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>`;
-                        iconBg.className = "bg-white/20 p-2 rounded-lg mr-4 text-white";
+                        toastTitle.className = "block font-bold text-sm text-red-600";
+                        toastMsg.className = "block text-xs text-slate-500 mt-0.5";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>`;
+                        iconBg.className = "bg-red-50 p-2.5 rounded-xl mr-4 text-red-500";
                     } else {
-                        toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center border border-slate-700`;
+                        toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-white text-slate-800 px-6 py-4 rounded-2xl shadow-floating flex items-center border border-slate-100`;
                         toastTitle.innerText = "Success";
-                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`;
-                        iconBg.className = "bg-green-500/20 p-2 rounded-lg mr-4 text-green-400";
+                        toastTitle.className = "block font-bold text-sm text-slate-900";
+                        toastMsg.className = "block text-xs text-slate-500 mt-0.5";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>`;
+                        iconBg.className = "bg-green-50 p-2.5 rounded-xl mr-4 text-green-500";
                     }
                     
                     toast.classList.remove('translate-y-20', 'opacity-0');
@@ -450,92 +480,136 @@
         })
     </script>
 </head>
-<body class="bg-[#f8f9fa] text-slate-800 font-sans antialiased" x-data="appData">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased overflow-hidden selection:bg-brand-blue/20 selection:text-brand-blue" x-data="appData">
 
-    <div id="app-wrapper" class="print:hidden flex h-screen overflow-hidden">
+    <div id="app-wrapper" class="print:hidden flex h-screen overflow-hidden ambient-gradient relative">
         
-        <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
-            <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
-                <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
+        <aside class="w-[280px] bg-white/80 backdrop-blur-xl flex flex-col z-20 shadow-[10px_0_30px_rgba(0,0,0,0.02)] border-r border-white/50">
+            <div class="flex items-center px-8 h-24 border-b border-slate-100/50">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-3 shadow-lg shadow-brand-blue/30">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <h1 class="text-xl font-black tracking-tight text-brand-dark">SKILLS</h1>
             </div>
-            <nav class="p-4 space-y-2 mt-4">
-                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">Dashboard</a>
-                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">Live Calendar</a>
-                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm">New Booking</a>
-                <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white/20 shadow-inner' : 'hover:bg-white/10'" class="flex items-center px-4 py-3 rounded-lg transition-all font-medium text-sm mt-8 border-t border-white/10 pt-4">Master List</a>
+            
+            <nav class="p-5 space-y-1.5 mt-2 flex-1">
+                <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 mt-2">Menu</p>
+                
+                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
+                    <svg class="w-5 h-5 mr-3" :class="currentView === 'dashboard' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard Overview
+                </a>
+                
+                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
+                    <svg class="w-5 h-5 mr-3" :class="currentView === 'calendar' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Live Calendar
+                </a>
+                
+                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
+                    <svg class="w-5 h-5 mr-3" :class="currentView === 'new-booking' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Booking
+                </a>
+                
+                <div class="pt-6 mt-4 border-t border-slate-100/50">
+                    <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Database</p>
+                    <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
+                        <svg class="w-5 h-5 mr-3" :class="currentView === 'master-list' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        Master List
+                    </a>
+                </div>
             </nav>
+            
+            <div class="p-6 border-t border-slate-100/50 bg-slate-50/50 mt-auto">
+                <div class="flex items-center cursor-pointer group">
+                    <div class="w-10 h-10 rounded-full bg-white border border-slate-200 text-brand-dark flex items-center justify-center font-bold text-sm shadow-sm group-hover:border-brand-blue transition-colors">AU</div>
+                    <div class="ml-3">
+                        <p class="text-sm font-bold text-brand-dark leading-tight group-hover:text-brand-blue transition-colors">Anthony Toñacao</p>
+                        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Administrator</p>
+                    </div>
+                </div>
+            </div>
         </aside>
 
-        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
-            <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
-                <svg class="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-sm font-bold text-slate-600 tracking-wider">SYNCHRONIZING RECORDS...</span>
+            <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/60 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;" x-transition.opacity>
+                <div class="bg-white p-6 rounded-2xl shadow-saas border border-slate-100 flex flex-col items-center">
+                    <svg class="animate-spin h-10 w-10 text-brand-blue mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Synchronizing...</span>
+                </div>
             </div>
 
-            <!-- Top Header -->
-            <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
-                <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
-                <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
-                    <div class="text-right hidden md:block">
-                        <p class="text-sm font-bold text-slate-900">Anthony Toñacao</p>
-                        <p class="text-xs text-slate-500">Administrator</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">AU</div>
+            <header class="h-24 flex items-center justify-between px-10 z-10 shrink-0">
+                <div>
+                    <h2 class="text-2xl font-black text-brand-dark tracking-tight" x-text="currentView === 'dashboard' ? 'Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking' : 'Master List'))"></h2>
+                    <p class="text-sm text-slate-500 font-medium mt-1">Manage reservations and facility schedules.</p>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button class="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-dark shadow-sm transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    </button>
                 </div>
             </header>
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-10 pt-4">
                 
-                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
-                    <div class="flex justify-between items-center mb-10">
-                        <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
-                        <button @click="switchView('new-booking')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all flex items-center"><span class="mr-2">+</span> New Walk-in</button>
+                    <div class="flex justify-between items-center mb-8">
+                        <p class="text-slate-500 font-medium text-sm">Your daily activity summary.</p>
+                        <button @click="switchView('new-booking')" class="bg-brand-blue hover:bg-brand-blueHover text-white px-6 py-2.5 rounded-full font-bold shadow-floating transition-all flex items-center text-sm">
+                            <span class="mr-2 text-lg leading-none">+</span> Create Booking
+                        </button>
                     </div>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
-                            <div class="bg-blue-50 p-4 rounded-xl mr-5"><svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></div>
-                            <div><p class="text-sm font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Bookings</p><h3 class="text-4xl font-black text-slate-800" x-text="masterList.length"></h3></div>
+                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 flex items-center hover:-translate-y-1 transition-transform duration-300">
+                            <div class="bg-brand-soft p-4 rounded-2xl mr-5 border border-slate-100">
+                                <svg class="w-7 h-7 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Total Bookings</p>
+                                <h3 class="text-3xl font-black text-brand-dark" x-text="masterList.length"></h3>
+                            </div>
                         </div>
-                    </div>
+                        </div>
                 </div>
 
-                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
-                        <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
-                            <button @click="changeDay(-1)" class="px-4 h-full text-slate-400 hover:bg-slate-50 border-r border-slate-200 focus:outline-none transition-colors font-medium">&lt;</button>
-                            <input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none text-sm font-bold text-slate-800 px-4 h-full text-center outline-none bg-transparent w-40 cursor-pointer">
-                            <button @click="changeDay(1)" class="px-4 h-full text-slate-400 hover:bg-slate-50 border-l border-slate-200 focus:outline-none transition-colors font-medium">&gt;</button>
+                        <div class="flex items-center bg-white rounded-2xl border border-slate-200 shadow-saas overflow-hidden h-12 p-1">
+                            <button @click="changeDay(-1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark transition-colors font-bold">&lt;</button>
+                            <input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none text-sm font-bold text-brand-dark px-4 h-full text-center outline-none bg-transparent w-40 cursor-pointer">
+                            <button @click="changeDay(1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark transition-colors font-bold">&gt;</button>
                         </div>
-                        <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest px-4 py-2 hover:bg-blue-50 rounded-lg transition-colors">Today</button>
+                        <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-brand-blue bg-white border border-slate-200 shadow-sm hover:shadow-md uppercase tracking-widest px-6 h-12 rounded-2xl transition-all">Today</button>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-10">
+                    <div class="bg-white/95 backdrop-blur-md rounded-3xl shadow-saas border border-white overflow-hidden mb-10">
                         <div class="overflow-x-auto">
                             <div class="min-w-[900px]">
-                                <div class="grid grid-cols-[180px_1fr_1fr_1fr] bg-white border-b border-slate-200 sticky top-0 z-10">
-                                    <div class="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 flex items-center justify-center">Time Block</div>
-                                    <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 1</div>
-                                    <div class="p-5 text-center font-bold text-slate-800 border-r border-slate-100 text-sm">Court 2</div>
-                                    <div class="p-5 text-center font-bold text-slate-800 text-sm">Court 3</div>
+                                <div class="grid grid-cols-[180px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
+                                    <div class="p-5 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-200/60 flex items-center justify-center">Time Block</div>
+                                    <div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 1</div>
+                                    <div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 2</div>
+                                    <div class="p-5 text-center font-bold text-brand-dark text-sm">Court 3</div>
                                 </div>
+                                
                                 <template x-for="block in timeBlocks" :key="block.start">
-                                    <div class="grid grid-cols-[180px_1fr_1fr_1fr] border-b border-slate-100 group bg-white">
-                                        <div class="p-4 text-xs font-bold text-slate-500 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
+                                    <div class="grid grid-cols-[180px_1fr_1fr_1fr] border-b border-slate-100 group bg-white hover:bg-slate-50/50 transition-colors">
+                                        <div class="p-4 text-[11px] font-bold text-slate-400 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap uppercase tracking-wider" x-text="block.label"></div>
+                                        
                                         <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                             <div class="p-3 border-r border-slate-100 last:border-r-0 h-28 relative">
                                                 <template x-if="getBookingData(block, court).booked">
-                                                    <div class="w-full h-full rounded-xl bg-blue-600 text-white flex flex-col items-center justify-center cursor-default shadow-md shadow-blue-500/20 transform transition-transform hover:scale-[1.02]">
-                                                        <span class="text-sm font-bold truncate w-full text-center px-2" x-text="getBookingData(block, court).title"></span>
-                                                        <span class="text-[9px] uppercase tracking-wider font-bold bg-blue-700/60 px-3 py-1 rounded-full mt-1.5" x-text="getBookingData(block, court).bookingRef"></span>
+                                                    <div class="w-full h-full rounded-2xl bg-brand-blue text-white flex flex-col items-center justify-center cursor-default shadow-floating transform transition-transform hover:scale-[1.03]">
+                                                        <span class="text-sm font-bold truncate w-full text-center px-3" x-text="getBookingData(block, court).title"></span>
+                                                        <span class="text-[9px] uppercase tracking-widest font-bold bg-white/20 px-3 py-1 rounded-full mt-2" x-text="getBookingData(block, court).bookingRef"></span>
                                                     </div>
                                                 </template>
+                                                
                                                 <template x-if="!getBookingData(block, court).booked">
-                                                    <div class="w-full h-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-blue-500 font-semibold text-xs opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Book Slot</div>
+                                                    <div class="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center text-brand-blue font-bold text-xs opacity-0 group-hover:opacity-100 hover:bg-brand-soft hover:border-brand-blue/30 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Reserve</div>
                                                 </template>
                                             </div>
                                         </template>
@@ -546,15 +620,19 @@
                     </div>
                 </div>
 
-                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
+                    <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 lg:p-12 relative">
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-10">
+                        <div class="border-b border-slate-100 pb-8 mb-8">
+                            <h3 class="text-lg font-bold text-brand-dark mb-1">Customer Details</h3>
+                            <p class="text-xs text-slate-500 font-medium">Enter the primary contact information for this reservation.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-12">
                             <div>
                                 <label class="form-label">Full Name <span class="text-red-500">*</span></label>
-                                <input type="text" class="form-input" :class="errors.fullName ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName" @input="errors.fullName = false">
+                                <input type="text" class="form-input" :class="errors.fullName ? '!border-red-400 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName" @input="errors.fullName = false">
                             </div>
                             <div>
                                 <label class="form-label">Organization Name</label>
@@ -562,30 +640,40 @@
                             </div>
                             <div>
                                 <label class="form-label">Email Address <span class="text-red-500">*</span></label>
-                                <input type="email" class="form-input" :class="errors.email ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="Enter email to send receipt" x-model="bookingForm.email" @input="errors.email = false">
+                                <input type="email" class="form-input" :class="errors.email ? '!border-red-400 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="Enter email for e-receipt" x-model="bookingForm.email" @input="errors.email = false">
                             </div>
-                            <div><label class="form-label">Home Address</label><input type="text" class="form-input" placeholder="Enter complete home address" x-model="bookingForm.address"></div>
+                            <div>
+                                <label class="form-label">Home Address</label>
+                                <input type="text" class="form-input" placeholder="Complete address" x-model="bookingForm.address">
+                            </div>
                             <div>
                                 <label class="form-label">Type of ID</label>
-                                <select class="form-input" x-model="bookingForm.idType"><option>National ID</option><option>Driver's License</option><option>Passport</option></select>
+                                <select class="form-input font-semibold" x-model="bookingForm.idType"><option>National ID</option><option>Driver's License</option><option>Passport</option></select>
                             </div>
-                            <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
+                            <div>
+                                <label class="form-label">ID Number</label>
+                                <input type="text" class="form-input font-mono" placeholder="ID Number" x-model="bookingForm.idNumber">
+                            </div>
                         </div>
 
-                        <!-- MULTI-SLOT ITERATION -->
+                        <div class="border-b border-slate-100 pb-8 mb-8">
+                            <h3 class="text-lg font-bold text-brand-dark mb-1">Facility Allocation</h3>
+                            <p class="text-xs text-slate-500 font-medium">Select the dates, courts, and time blocks required.</p>
+                        </div>
+
                         <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
-                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
-                                <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
+                            <div class="bg-white border border-slate-200 rounded-3xl p-6 lg:p-8 mb-6 relative shadow-sm hover:shadow-md transition-shadow">
+                                <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-6 right-6 text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors px-4 py-2 rounded-xl uppercase tracking-widest">Remove</button>
                                 
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6 mt-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
                                     <div>
                                         <label class="form-label">Date of Event <span class="text-red-500">*</span></label>
-                                        <input type="date" class="form-input" :class="errors.slots[index]?.date ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.date" @change="if(errors.slots[index]) errors.slots[index].date = false">
+                                        <input type="date" class="form-input font-semibold" :class="errors.slots[index]?.date ? '!border-red-400 !bg-red-50' : ''" x-model="slot.date" @change="if(errors.slots[index]) errors.slots[index].date = false">
                                     </div>
                                     
                                     <div>
-                                        <label class="form-label">Sport Type / Package <span class="text-red-500">*</span></label>
-                                        <select class="form-input" :class="errors.slots[index]?.sportType ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)">
+                                        <label class="form-label">Sport / Package <span class="text-red-500">*</span></label>
+                                        <select class="form-input font-semibold" :class="errors.slots[index]?.sportType ? '!border-red-400 !bg-red-50' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)">
                                             <option value="" disabled>Select option...</option>
                                             <option>Basketball</option><option>Volleyball</option><option>Badminton</option>
                                             <option>Package A</option><option>Package B</option><option>Package C</option>
@@ -593,7 +681,7 @@
                                     </div>
                                     <div>
                                         <label class="form-label">Select Facility <span class="text-red-500">*</span></label>
-                                        <select class="form-input" :class="errors.slots[index]?.court ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="if(errors.slots[index]) errors.slots[index].court = false">
+                                        <select class="form-input font-semibold" :class="errors.slots[index]?.court ? '!border-red-400 !bg-red-50' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="if(errors.slots[index]) errors.slots[index].court = false">
                                             <option value="" disabled>Select facility...</option>
                                             <template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac">
                                                 <option x-text="fac" :value="fac"></option>
@@ -603,20 +691,20 @@
 
                                     <div class="col-span-1 md:col-span-3">
                                         <label class="form-label">Remarks & Inclusions</label>
-                                        <input type="text" class="form-input font-medium text-slate-700" placeholder="e.g. Regular Game (Max 20 pax)." x-model="slot.remarks">
+                                        <input type="text" class="form-input text-slate-700" placeholder="e.g. Regular Game (Max 20 pax)." x-model="slot.remarks">
                                     </div>
                                     
                                     <div>
                                         <label class="form-label">Time Started <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-semibold" :class="errors.slots[index]?.timeStart ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.timeStart" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeStart = false">
-                                            <option value="" disabled>Select start time...</option>
+                                        <select class="form-input font-bold" :class="errors.slots[index]?.timeStart ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeStart" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeStart = false">
+                                            <option value="" disabled>Start time...</option>
                                             <template x-for="time in timeOptions.slice(0, -1)" :key="time"><option x-text="time" :value="time"></option></template>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="form-label">Time Ended <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-semibold" :class="errors.slots[index]?.timeEnd ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false">
-                                            <option value="" disabled>Select end time...</option>
+                                        <select class="form-input font-bold" :class="errors.slots[index]?.timeEnd ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false">
+                                            <option value="" disabled>End time...</option>
                                             <template x-for="time in timeOptions.slice(1)" :key="time"><option x-text="time" :value="time"></option></template>
                                         </select>
                                     </div>
@@ -624,56 +712,53 @@
                             </div>
                         </template>
 
-                        <!-- Add Slot Button -->
-                        <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex justify-center items-center">
+                        <button @click.prevent="addSlot()" class="w-full py-4 mb-12 bg-transparent border-2 border-dashed border-slate-200 rounded-3xl text-sm font-bold text-slate-400 hover:border-brand-blue hover:text-brand-blue hover:bg-brand-soft transition-all">
                             + Add Another Booking Slot
                         </button>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                            <div><label class="form-label">Total Hours</label><input type="text" class="form-input bg-slate-100 font-bold" x-model="bookingForm.totalHours" readonly></div>
-                            <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600" x-model="bookingForm.baseAmount" readonly></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                            <div><label class="form-label">Total Hours</label><input type="text" class="form-input bg-slate-100 font-bold border-transparent" x-model="bookingForm.totalHours" readonly></div>
+                            <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600 border-transparent" x-model="bookingForm.baseAmount" readonly></div>
                         </div>
 
-                        <!-- DYNAMIC ADDITIONAL CHARGES UI -->
-                        <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 bg-white">
+                        <div class="border border-slate-200 rounded-3xl p-6 lg:p-8 mb-10 bg-white shadow-sm">
                             <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-6' : ''">
                                 <div>
-                                    <label class="form-label mb-0 text-slate-700">Additional Charges</label>
-                                    <p class="text-xs text-slate-400 mt-1">Applied to entire transaction</p>
+                                    <h3 class="text-sm font-bold text-brand-dark">Additional Charges</h3>
+                                    <p class="text-[11px] text-slate-400 uppercase tracking-widest mt-1">Applied to entire transaction</p>
                                 </div>
-                                <button @click="addCharge()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                <button @click="addCharge()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-full text-xs font-bold text-brand-dark shadow-sm hover:bg-slate-50 transition-colors flex items-center">
+                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                     Add Charge
                                 </button>
                             </div>
                             
                             <template x-for="(charge, index) in bookingForm.additionalCharges" :key="index">
                                 <div class="flex flex-col md:flex-row gap-4 mb-4 items-start md:items-center">
-                                    <input type="text" class="form-input flex-1" placeholder="Description (e.g. Extra Chairs, Stall)" x-model="charge.description">
+                                    <input type="text" class="form-input flex-1" placeholder="Description (e.g. Extra Chairs)" x-model="charge.description">
                                     <div class="relative w-full md:w-1/3">
-                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₱</span>
-                                        <input type="number" class="form-input pl-9 font-semibold text-slate-700" placeholder="0.00" x-model="charge.amount" @input="calculateTotals()">
+                                        <span class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₱</span>
+                                        <input type="number" class="form-input pl-10 font-bold text-slate-700" placeholder="0.00" x-model="charge.amount" @input="calculateTotals()">
                                     </div>
-                                    <button @click="removeCharge(index)" class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Remove Charge">
+                                    <button @click="removeCharge(index)" class="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent" title="Remove Charge">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </div>
                             </template>
                         </div>
 
-                        <div class="mb-8 bg-blue-50 border border-blue-100 rounded-xl p-6 flex justify-between items-center">
-                            <div>
-                                <label class="block text-sm font-bold uppercase tracking-widest text-blue-900 mb-1">Grand Total Payable</label>
-                                <p class="text-xs text-blue-600 font-medium">Philippine Peso (PHP)</p>
+                        <div class="mb-10 bg-brand-dark rounded-3xl p-8 flex flex-col md:flex-row justify-between items-center shadow-xl">
+                            <div class="mb-4 md:mb-0 text-center md:text-left">
+                                <label class="block text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">Grand Total Payable</label>
+                                <p class="text-xs text-white/50 font-medium">Philippine Peso (PHP)</p>
                             </div>
-                            <input type="text" class="bg-transparent text-right text-4xl font-black text-blue-900 outline-none w-1/2" x-model="bookingForm.grandTotal" readonly>
+                            <input type="text" class="bg-transparent text-center md:text-right text-5xl font-black text-white outline-none w-full md:w-1/2" x-model="bookingForm.grandTotal" readonly>
                         </div>
 
-                        <!-- CONDITIONAL PAYMENT UI -->
-                        <div class="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="mb-12 grid grid-cols-1 md:grid-cols-2 gap-8 bg-brand-soft rounded-3xl p-8 border border-slate-100">
                             <div>
                                 <label class="form-label">Mode of Payment</label>
-                                <select class="form-input font-bold" x-model="bookingForm.paymentMode" @change="if(bookingForm.paymentMode === 'Cash') { bookingForm.paymentReference = ''; errors.paymentReference = false; }">
+                                <select class="form-input font-bold bg-white" x-model="bookingForm.paymentMode" @change="if(bookingForm.paymentMode === 'Cash') { bookingForm.paymentReference = ''; errors.paymentReference = false; }">
                                     <option>Cash</option>
                                     <option>GCash</option>
                                     <option>Bank Transfer</option>
@@ -681,51 +766,50 @@
                             </div>
                             
                             <div x-show="bookingForm.paymentMode !== 'Cash'" x-transition.opacity>
-                                <label class="form-label">Transaction Reference # <span class="text-red-500">*</span></label>
-                                <input type="text" class="form-input font-mono text-blue-700 font-bold tracking-widest" :class="errors.paymentReference ? '!border-red-500 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. 10023456789" x-model="bookingForm.paymentReference" @input="errors.paymentReference = false">
+                                <label class="form-label text-brand-blue">Reference No. <span class="text-red-500">*</span></label>
+                                <input type="text" class="form-input font-mono text-brand-blue font-bold tracking-widest bg-white border-brand-blue/30" :class="errors.paymentReference ? '!border-red-400 !bg-red-50 focus:!ring-red-500/20' : ''" placeholder="e.g. 10023456789" x-model="bookingForm.paymentReference" @input="errors.paymentReference = false">
                             </div>
                         </div>
 
-                        <button @click="submitBooking()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg">
-                            Save Complete Booking
+                        <button @click="submitBooking()" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-black py-5 rounded-full shadow-floating transition-all text-lg tracking-wide">
+                            Confirm & Save Booking
                         </button>
                     </div>
                 </div>
 
-                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 class="font-bold text-slate-800">Booking Database Records</h3>
-                            <button @click="loadMasterList()" class="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline">Refresh Data</button>
+                    <div class="bg-white/95 backdrop-blur-md rounded-3xl shadow-saas border border-white overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-transparent">
+                            <h3 class="font-bold text-brand-dark">Database Records</h3>
+                            <button @click="loadMasterList()" class="text-[11px] font-bold uppercase tracking-widest text-brand-blue hover:text-brand-dark transition-colors">Refresh Data</button>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-white border-b-2 border-slate-100 text-xs uppercase tracking-wider text-slate-500">
-                                        <th class="p-5 font-bold">Receipt ID</th>
-                                        <th class="p-5 font-bold">Customer</th>
-                                        <th class="p-5 font-bold">Event Date</th>
-                                        <th class="p-5 font-bold">Facility</th>
-                                        <th class="p-5 font-bold">Time</th>
-                                        <th class="p-5 font-bold text-right">Total (PHP)</th>
+                                    <tr class="bg-brand-soft text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-200">
+                                        <th class="p-5">Receipt ID</th>
+                                        <th class="p-5">Customer</th>
+                                        <th class="p-5">Event Date</th>
+                                        <th class="p-5">Facility</th>
+                                        <th class="p-5">Time</th>
+                                        <th class="p-5 text-right">Total (PHP)</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     <template x-if="masterList.length === 0">
-                                        <tr><td colspan="6" class="p-10 text-center text-slate-400 font-medium">No records found or data is loading. Check your connection or API configuration.</td></tr>
+                                        <tr><td colspan="6" class="p-12 text-center text-slate-400 font-medium text-sm">No records found. Data may be loading.</td></tr>
                                     </template>
                                     <template x-for="item in masterList" :key="item.timestamp">
-                                        <tr class="hover:bg-slate-50 transition-colors">
-                                            <td class="p-5 text-sm font-bold text-blue-600 tracking-wider" x-text="item.bookingRef || 'BK-OLD'"></td>
-                                            <td class="p-5 text-sm font-bold text-slate-800">
+                                        <tr class="hover:bg-slate-50/80 transition-colors">
+                                            <td class="p-5 text-sm font-bold text-brand-blue tracking-wider" x-text="item.bookingRef || 'BK-OLD'"></td>
+                                            <td class="p-5 text-sm font-bold text-brand-dark">
                                                 <span x-text="item.fullName"></span>
-                                                <span class="block text-xs font-semibold text-slate-400 mt-1 uppercase" x-text="item.organization"></span>
+                                                <span class="block text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider" x-text="item.organization"></span>
                                             </td>
-                                            <td class="p-5 text-sm text-slate-700 font-semibold" x-text="item.date"></td>
-                                            <td class="p-5"><span class="inline-block bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1 rounded-full" x-text="item.facility"></span></td>
-                                            <td class="p-5 text-sm text-slate-600 font-medium"><span x-text="item.timeStart"></span> - <span x-text="item.timeEnd"></span></td>
-                                            <td class="p-5 text-sm font-black text-slate-800 text-right" x-text="item.grandTotal"></td>
+                                            <td class="p-5 text-sm text-slate-600 font-semibold" x-text="item.date"></td>
+                                            <td class="p-5"><span class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-lg" x-text="item.facility"></span></td>
+                                            <td class="p-5 text-sm text-slate-500 font-medium"><span x-text="item.timeStart"></span> - <span x-text="item.timeEnd"></span></td>
+                                            <td class="p-5 text-sm font-black text-brand-dark text-right" x-text="item.grandTotal"></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -737,29 +821,27 @@
             </main>
         </div>
         
-        <!-- PRINT CONFIRMATION MODAL -->
         <div x-show="showReceiptModal" style="display: none;" class="fixed inset-0 z-[90] flex items-center justify-center">
-            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="finishAndRedirect()"></div>
-            <div class="bg-white rounded-2xl shadow-2xl z-[100] max-w-md w-full p-8 transform transition-all" x-transition.scale.origin.bottom>
-                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 mx-auto">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <div class="absolute inset-0 bg-brand-dark/40 backdrop-blur-sm" @click="finishAndRedirect()"></div>
+            <div class="bg-white rounded-[2rem] shadow-2xl z-[100] max-w-md w-full p-10 transform transition-all" x-transition.scale.origin.bottom>
+                <div class="w-20 h-20 bg-brand-blue text-white rounded-full flex items-center justify-center mb-6 mx-auto shadow-floating">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h3 class="text-2xl font-bold text-center text-slate-800 mb-2">Booking Secured!</h3>
-                <p class="text-center text-slate-500 mb-8">The system has cached the entry securely. Would you like to print the dual official receipt copy now?</p>
-                <div class="flex flex-col space-y-3">
-                    <button @click="printAndFinish()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-all flex justify-center items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        Print 2 Copies
+                <h3 class="text-2xl font-black text-center text-brand-dark mb-2 tracking-tight">Booking Secured!</h3>
+                <p class="text-center text-slate-500 text-sm mb-10 leading-relaxed">The system has cached the entry securely. The customer email confirmation has been dispatched.</p>
+                <div class="flex flex-col space-y-4">
+                    <button @click="printAndFinish()" class="w-full bg-brand-dark hover:bg-black text-white font-bold py-4 rounded-full shadow-lg transition-all flex justify-center items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        Print Official Receipt
                     </button>
-                    <button @click="finishAndRedirect()" class="w-full py-4 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-all">
-                        Skip & Go to Calendar
+                    <button @click="finishAndRedirect()" class="w-full py-4 text-slate-400 font-bold hover:bg-slate-50 hover:text-brand-dark rounded-full transition-colors">
+                        Skip & Return to Calendar
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- RECEIPT VIEW (PRINT EXCLUSIVE TARGET) -->
     <div id="print-receipt-wrapper" class="hidden text-black font-sans w-full max-w-[800px] mx-auto">
         <template x-if="lastSavedBooking">
             <div class="flex flex-col min-h-screen">
@@ -852,7 +934,6 @@
         </template>
     </div>
 
-    <!-- SYSTEM TOAST -->
     <div id="toast" class="print:hidden fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
