@@ -14,16 +14,9 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        brand: {
-                            blue: '#2D5DF6',      
-                            blueHover: '#1B44C8',
-                            dark: '#0F172A',      
-                            soft: '#F3F6FD'       
-                        }
+                        brand: { blue: '#2D5DF6', blueHover: '#1B44C8', dark: '#0F172A', soft: '#F3F6FD' }
                     },
                     boxShadow: {
                         'saas': '0 20px 40px -15px rgba(0,0,0,0.03)',
@@ -39,9 +32,7 @@
             .form-input { 
                 @apply w-full rounded-2xl border border-slate-200/80 bg-brand-soft py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:bg-white focus:ring-4 focus:ring-brand-blue/15 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100 font-medium; 
             }
-            .form-label { 
-                @apply mb-2.5 block text-xs font-bold uppercase tracking-widest text-slate-500; 
-            }
+            .form-label { @apply mb-2.5 block text-xs font-bold uppercase tracking-widest text-slate-500; }
             select.form-input {
                 @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:cursor-not-allowed;
                 background-position: right 1.25rem center;
@@ -89,8 +80,7 @@
                     { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' },
                     { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' },
                     { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' },
-                    { label: '1:00 PM - 2:00 PM', start: '13:00', end: '14:00', queryTime: '1:00 PM' },
-                    { label: '2:00 PM - 3:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
+                    { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
                     { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' },
                     { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' },
                     { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' },
@@ -136,8 +126,10 @@
                 masterList: [],
                 lastSavedBooking: null,
                 
-                // --- GOOGLE SHEETS WEB APP URL ---
-                scriptURL: 'https://script.google.com/macros/s/AKfycbzG8CdJ0bjGzzdeoIQiOQ4lnq8hWqmSZiDP7FP_czqlhR59WuDHcUrkidFZWbSmpL8yug/exec',
+                // =======================================================
+                // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
+                // =======================================================
+                scriptURL: 'https://script.google.com/macros/s/AKfycbw9TSjON-2APwIZLML3RyOQvmv6aL0dBUUS_Tb8zmejgaz0P0ocFXkV362Q9Rtw2BuK-Q/exec',
 
                 init() {
                     const cachedBookings = localStorage.getItem('skills_gym_bookings');
@@ -149,23 +141,36 @@
                     this.loadMasterList();
                 },
 
-                // Filter for pending bookings
                 get pendingBookings() {
                     return this.masterList.filter(item => item.status === 'Pending');
                 },
 
-                // Action to approve a booking
-                approveBooking(ref) {
-                    // Update local state
+                // LIVE API APPROVAL ENGINE
+                async approveBooking(ref) {
+                    // Update local UI immediately
                     this.masterList.forEach(item => {
                         if(item.bookingRef === ref) item.status = 'Confirmed';
                     });
                     localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
-                    this.showToast("Booking " + ref + " approved and confirmed!", "success");
-                    // Note: Future feature will send an API request here to update the Google Sheet column.
+                    this.showToast("Approving booking " + ref + "...", "success");
+
+                    // Send payload to Google Sheets
+                    try {
+                        const payload = { action: "approve", bookingRef: ref };
+                        await fetch(this.scriptURL, {
+                            method: 'POST',
+                            mode: 'no-cors', 
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        this.showToast("Booking " + ref + " officially confirmed!", "success");
+                        setTimeout(() => { this.loadMasterList(); }, 1500); // Background refresh
+                    } catch (error) {
+                        this.showToast("Error communicating with database.", "error");
+                    }
                 },
 
-                // Analytics Dashboard Processing Engine
                 get metrics() {
                     let cash = 0, gcash = 0, bank = 0, grandTotal = 0;
                     let daysMap = { 'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0 };
@@ -174,8 +179,7 @@
                     this.timeBlocks.forEach(b => { hoursMap[b.queryTime] = 0; });
 
                     this.masterList.forEach(item => {
-                        // Only count confirmed bookings in the analytics (optional, but good practice)
-                        if (item.status === 'Pending') return;
+                        if (item.status === 'Pending') return; // Only count confirmed
 
                         let amt = parseFloat(item.grandTotal) || 0;
                         grandTotal += amt;
@@ -446,7 +450,7 @@
                 switchView(viewName) {
                     this.currentView = viewName;
                     this.sidebarOpen = false; 
-                    if (viewName === 'master-list' || viewName === 'pending') { this.loadMasterList(); }
+                    if (viewName === 'master-list' || viewName === 'pending' || viewName === 'calendar') { this.loadMasterList(); }
                 },
 
                 async loadMasterList() {
@@ -459,7 +463,7 @@
                             this.masterList = result.data;
                             let newLocalBookings = [];
                             result.data.forEach(item => {
-                                // Only populate calendar with Confirmed or older (pre-status) bookings
+                                // Calendar only shows confirmed logic
                                 if (item.status === 'Confirmed' || !item.status) {
                                     newLocalBookings.push({
                                         ref: item.bookingRef || 'BK-LIVE', customer: item.fullName, date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
@@ -495,7 +499,6 @@
                         printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                     }));
 
-                    // Add to master list locally as Pending
                     const safePaymentString = this.bookingForm.paymentMode === 'Cash' 
                         ? 'Cash' : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
 
@@ -573,7 +576,7 @@
                 <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 mt-2">Menu</p>
                 
                 <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                    <svg class="w-5 h-5 mr-3" :class="currentView === 'dashboard' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <svg class="w-5 h-5 mr-3" :class="currentView === 'dashboard' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     Dashboard Analytics
                 </a>
                 
