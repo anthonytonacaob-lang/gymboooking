@@ -39,7 +39,6 @@
         }
         .ambient-gradient { background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%); background-attachment: fixed; }
         
-        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -51,9 +50,10 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('customerApp', () => ({
-                currentView: 'welcome', 
-                isLoading: true, // Start loading immediately to fetch calendar
+                currentView: 'welcome', // welcome -> terms -> booking-form -> success
+                isLoading: true, 
                 currentDate: new Date().toISOString().split('T')[0],
+                acceptedTerms: false, // Tracks if user checked the waiver box
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
@@ -61,7 +61,7 @@
                 scriptURL: 'https://script.google.com/macros/s/AKfycbw9TSjON-2APwIZLML3RyOQvmv6aL0dBUUS_Tb8zmejgaz0P0ocFXkV362Q9Rtw2BuK-Q/exec',
                 
                 bookingCategory: 'Regular', 
-                localBookings: [], // Stores public calendar data securely
+                localBookings: [], 
 
                 timeBlocks: [
                     { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
@@ -107,7 +107,6 @@
                 },
                 errors: {},
 
-                // INITIALIZE: Fetch Live Data
                 init() {
                     this.fetchCalendarData();
                 },
@@ -123,7 +122,6 @@
                         if (result.status === 'success' && result.data) {
                             let secureBookings = [];
                             result.data.forEach(item => {
-                                // Extract ONLY necessary data to protect privacy
                                 secureBookings.push({
                                     date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
                                 });
@@ -175,6 +173,7 @@
                     this.form.court = availableCourts.length === 1 ? availableCourts[0] : '';
                 },
 
+                // Modified to route to Terms & Conditions first
                 initiateBooking(type) {
                     this.bookingCategory = type;
                     if(type === 'Regular') {
@@ -184,13 +183,14 @@
                         this.form.sportType = 'Package A';
                         this.form.court = 'WHOLE GYM';
                     }
-                    this.currentView = 'booking-form';
+                    this.acceptedTerms = false;
+                    this.currentView = 'terms';
                 },
 
-                // NEW: Click an available slot on the calendar to fast-book
+                // Modified to route to Terms & Conditions first
                 fastBookSlot(court, block) {
                     this.bookingCategory = 'Regular';
-                    this.form.sportType = 'Basketball'; // Default for quick clicks
+                    this.form.sportType = 'Basketball'; 
                     this.form.court = court;
                     this.form.timeStart = block.queryTime;
                     
@@ -199,10 +199,18 @@
                         this.form.timeEnd = this.timeOptions[startIndex + 1];
                     }
                     
-                    this.currentView = 'booking-form';
+                    this.acceptedTerms = false;
+                    this.currentView = 'terms';
                 },
 
-                goBack() { this.currentView = 'welcome'; },
+                proceedToForm() {
+                    if (this.acceptedTerms) {
+                        this.currentView = 'booking-form';
+                    }
+                },
+
+                goBackToWelcome() { this.currentView = 'welcome'; },
+                goBackToTerms() { this.currentView = 'terms'; },
 
                 validateForm() {
                     this.errors = {};
@@ -242,13 +250,13 @@
                         bookingRef: refNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
                         address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: safePaymentString, baseAmount: this.estimatedTotal,
                         grandTotal: this.estimatedTotal, additionalCharges: [],
-                        slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Submitted via Public Portal' }]
+                        slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Agreed to Digital Waiver' }]
                     };
 
                     try {
                         await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
                         this.currentView = 'success';
-                        this.fetchCalendarData(); // Refresh calendar to show their new block
+                        this.fetchCalendarData(); 
                     } catch (error) {
                         alert("There was a connection issue sending your request. Please try again.");
                     } finally {
@@ -294,11 +302,9 @@
                     </div>
                 </div>
 
-                <!-- NEW: Integrated Calendar UI -->
                 <div class="w-full h-[500px] lg:h-[650px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
                     <div class="overflow-y-auto overflow-x-auto flex-1 hide-scroll">
                         <div class="min-w-[500px]">
-                            <!-- Header row -->
                             <div class="grid grid-cols-[90px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
                                 <div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div>
                                 <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div>
@@ -306,7 +312,6 @@
                                 <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div>
                             </div>
                             
-                            <!-- Calendar Grid Generation -->
                             <template x-for="block in timeBlocks" :key="block.start">
                                 <div class="grid grid-cols-[90px_1fr_1fr_1fr] border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors">
                                     <div class="p-2 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center whitespace-nowrap" x-text="block.label.split(' - ')[0]"></div>
@@ -314,14 +319,12 @@
                                     <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                         <div class="p-1.5 border-l border-slate-100 h-16 relative">
                                             
-                                            <!-- Booked Slot -->
                                             <template x-if="getBookingData(block, court).booked">
                                                 <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
                                                     <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
                                                 </div>
                                             </template>
                                             
-                                            <!-- Available Slot (Clickable) -->
                                             <template x-if="!getBookingData(block, court).booked">
                                                 <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
                                                     <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
@@ -363,14 +366,71 @@
                     </div>
                 </div>
 
-                <!-- STATE 2: DYNAMIC BOOKING FORM -->
+                <!-- STATE 2: TERMS & CONDITIONS WAIVER -->
+                <div x-show="currentView === 'terms'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
+                    <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
+                        <div>
+                            <h3 class="text-xl font-black text-brand-dark leading-tight">Terms & Waiver</h3>
+                            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Please review before proceeding</p>
+                        </div>
+                        <button @click="goBackToWelcome()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg> Cancel
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto pr-3 text-sm text-slate-600 space-y-5 hide-scroll">
+                        <div>
+                            <h4 class="font-bold text-brand-dark mb-1">I. Reservation & Payment Terms</h4>
+                            <ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500">
+                                <li><strong>Lead Time:</strong> Reservations require at least seven (7) working days' notice for large events/tournaments, and one (1) working day for regular games.</li>
+                                <li><strong>Payment:</strong> Regular games require full payment to secure a slot. Large events require a 50% non-refundable downpayment to reserve the date.</li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold text-brand-dark mb-1">II. Cancellation & Rescheduling</h4>
+                            <p class="text-xs text-slate-500 mb-2 leading-relaxed">Rescheduling requests are subject to the following administrative fees based on the total booking amount:</p>
+                            <ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500">
+                                <li><strong>7+ days notice:</strong> 20% Fee</li>
+                                <li><strong>1–3 days notice:</strong> 30% Fee</li>
+                                <li><strong>Same-day notice:</strong> 50% Fee</li>
+                                <li><strong>Force Majeure:</strong> In cases of typhoons, flooding, or government-mandated suspensions, bookings may be rescheduled or fully refunded without penalty.</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 class="font-bold text-brand-dark mb-1">III. Facility Waiver & Release of Liability</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">By proceeding, I declare that I am of legal age and am voluntarily requesting permission to use the Gymnasium facilities of SKILLS Inc. I am fully aware of the inherent risks involved in physical exercise and sports, including physical injury, accidents, or medical complications.</p>
+                            <p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">I voluntarily assume full responsibility for any risk of loss, property damage, or personal injury I may sustain. I hereby release, waive, discharge, and covenant not to sue SKILLS Inc. from any liability whatsoever for incidents occurring within the premises.</p>
+                            <p class="text-xs text-slate-500 leading-relaxed text-justify">Furthermore, I agree to maintain proper decorum. I acknowledge that involvement in any commotion, fight, or disturbance grants management the right to immediately expel me and revoke access privileges. This digital agreement shall bind my family and spouse as a complete release of liability under the laws of the Philippines.</p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 mt-4 pt-4 border-t border-slate-100">
+                        <label class="flex items-start cursor-pointer group mb-5">
+                            <div class="relative flex items-center justify-center mr-3 mt-0.5">
+                                <input type="checkbox" x-model="acceptedTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-brand-blue checked:border-brand-blue transition-all cursor-pointer">
+                                <svg class="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-brand-dark leading-snug">I have read and agree to the Terms & Conditions and the Waiver of Liability.</span>
+                        </label>
+
+                        <button @click="proceedToForm()" :disabled="!acceptedTerms" 
+                                class="w-full font-bold py-4 rounded-xl transition-all text-sm tracking-wide shadow-sm flex justify-center items-center"
+                                :class="acceptedTerms ? 'bg-brand-dark hover:bg-black text-white shadow-floating cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
+                            Proceed to Reservation Details <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STATE 3: DYNAMIC BOOKING FORM -->
                 <div x-show="currentView === 'booking-form'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 shrink-0">
                         <div>
                             <h3 class="text-xl font-black text-brand-dark leading-tight" x-text="bookingCategory === 'Regular' ? 'Regular Booking' : 'Event Booking'"></h3>
                             <p class="text-xs text-slate-500 font-medium mt-0.5" x-text="currentDate"></p>
                         </div>
-                        <button @click="goBack()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors">
+                        <button @click="goBackToTerms()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg> Back
                         </button>
                     </div>
@@ -450,14 +510,14 @@
                     </button>
                 </div>
 
-                <!-- STATE 3: SUCCESS CONFIRMATION -->
+                <!-- STATE 4: SUCCESS CONFIRMATION -->
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                     </div>
                     <h2 class="text-3xl font-black text-brand-dark mb-2">Request Sent!</h2>
                     <p class="text-slate-500 mb-8 font-medium text-sm">Your booking request has been forwarded to SKILLS administration. You will receive an email shortly.</p>
-                    <button @click="goBack(); form.fullName=''" class="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-full hover:bg-slate-200 transition-colors">
+                    <button @click="goBackToWelcome(); form.fullName=''" class="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-full hover:bg-slate-200 transition-colors">
                         Return to Start
                     </button>
                 </div>
