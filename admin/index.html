@@ -123,7 +123,6 @@
                     this.loadMasterList();
                 },
 
-                // HELPER: Convert string time ("2:00 PM") to 24-hour integer (14) for math
                 parseTimeInt(timeStr) {
                     if(!timeStr) return 0;
                     const [time, modifier] = timeStr.split(' ');
@@ -139,6 +138,7 @@
                     slot.court = ''; 
                     if (this.errors.slots[index]) this.errors.slots[index].sportType = false;
                     slot.remarks = this.remarksMap[slot.sportType] || '';
+                    this.calculateTotals(); // Trigger recalculation when type changes
                 },
 
                 addSlot() {
@@ -169,7 +169,6 @@
                         errorCount++;
                     }
 
-                    // Loop 1: Check for empty fields
                     this.bookingForm.slots.forEach((slot, index) => {
                         let slotErrors = {};
                         if (!slot.date) { slotErrors.date = true; errorCount++; }
@@ -180,19 +179,14 @@
                         this.errors.slots[index] = slotErrors;
                     });
 
-                    // Loop 2: NEW ANTI-DOUBLE BOOKING ENGINE
-                    // Only runs if the basic fields are filled out properly
                     if (errorCount === 0) {
                         for (let i = 0; i < this.bookingForm.slots.length; i++) {
                             let newSlot = this.bookingForm.slots[i];
                             const newStart = this.parseTimeInt(newSlot.timeStart);
                             const newEnd = this.parseTimeInt(newSlot.timeEnd);
 
-                            // Check against every existing booking in memory
                             for (let existing of this.localBookings) {
                                 if (existing.date === newSlot.date) {
-                                    
-                                    // Logic handles if "WHOLE GYM" was booked, it blocks all individual courts
                                     const courtConflict = (existing.court === newSlot.court) ||
                                                           (existing.court === 'WHOLE GYM' || existing.court === 'ALL 3 COURTS') ||
                                                           (newSlot.court === 'WHOLE GYM' || newSlot.court === 'ALL 3 COURTS');
@@ -201,7 +195,6 @@
                                         const existStart = this.parseTimeInt(existing.timeStart);
                                         const existEnd = this.parseTimeInt(existing.timeEnd);
                                         
-                                        // The math formula to detect overlapping time ranges
                                         if (newStart < existEnd && newEnd > existStart) {
                                             this.errors.slots[i].timeStart = true;
                                             this.errors.slots[i].timeEnd = true;
@@ -212,11 +205,11 @@
                                     }
                                 }
                             }
-                            if (conflictError) break; // Break outer loop if conflict found
+                            if (conflictError) break;
                         }
                     }
 
-                    if (conflictError) return conflictError; // Prioritize overlap message
+                    if (conflictError) return conflictError; 
                     if (errorCount === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
@@ -228,6 +221,7 @@
                     return null; 
                 },
 
+                // UPGRADED METHOD: Dynamic package pricing logic matrix
                 calculateTotals() {
                     let totalAmount = 0;
                     let totalHours = 0;
@@ -239,9 +233,28 @@
 
                             if (endHour > startHour) {
                                 totalHours += (endHour - startHour);
+                                
+                                // Set specific tiered dynamic variables
+                                let dayRate = 450;
+                                let eveRate = 550;
+
+                                if (slot.sportType === 'Package A') {
+                                    dayRate = 1500;
+                                    eveRate = 2500;
+                                } else if (slot.sportType === 'Package B') {
+                                    dayRate = 600;
+                                    eveRate = 700;
+                                } else if (slot.sportType === 'Package C') {
+                                    dayRate = 550;
+                                    eveRate = 650;
+                                }
+
                                 for (let i = startHour; i < endHour; i++) {
-                                    if (i >= 6 && i < 17) { totalAmount += 450; } 
-                                    else if (i >= 17 && i < 22) { totalAmount += 550; }
+                                    if (i >= 6 && i < 17) { 
+                                        totalAmount += dayRate; 
+                                    } else if (i >= 17 && i < 22) { 
+                                        totalAmount += eveRate; 
+                                    }
                                 }
                             }
                         }
@@ -328,7 +341,7 @@
                     setTimeout(() => { 
                         toast.classList.remove('translate-y-0', 'opacity-100'); 
                         toast.classList.add('translate-y-20', 'opacity-0'); 
-                    }, 5000); // Increased toast time to 5 seconds so they can read long overlap messages
+                    }, 5000); 
                 },
 
                 switchView(viewName) {
@@ -441,6 +454,7 @@
 
     <div id="app-wrapper" class="print:hidden flex h-screen overflow-hidden">
         
+        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-blue-600 text-white flex flex-col z-20 shadow-xl">
             <div class="flex items-center justify-center h-20 border-b border-white/10 shadow-sm">
                 <h1 class="text-xl font-bold tracking-widest text-white uppercase">SKILLS ADMIN</h1>
@@ -453,6 +467,7 @@
             </nav>
         </aside>
 
+        <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center" style="display: none;">
@@ -460,6 +475,7 @@
                 <span class="text-sm font-bold text-slate-600 tracking-wider">SYNCHRONIZING RECORDS...</span>
             </div>
 
+            <!-- Top Header -->
             <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 z-10 shrink-0">
                 <h2 class="text-xl font-bold text-slate-900 tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Overview' : (currentView === 'calendar' ? 'Live Facility Calendar' : (currentView === 'new-booking' ? 'New Booking Entry' : 'Master List Database'))"></h2>
                 <div class="flex items-center space-x-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
@@ -473,6 +489,7 @@
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-10">
                 
+                <!-- VIEW 1: DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms>
                     <div class="flex justify-between items-center mb-10">
                         <p class="text-slate-500 font-medium">Welcome back. Here is what's happening today.</p>
@@ -486,6 +503,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 2: CALENDAR -->
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
                         <div class="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-10">
@@ -528,6 +546,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 3: NEW BOOKING ENTRY FORM -->
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:p-10 relative">
@@ -553,6 +572,7 @@
                             <div><label class="form-label">ID Number</label><input type="text" class="form-input" placeholder="Enter ID number" x-model="bookingForm.idNumber"></div>
                         </div>
 
+                        <!-- MULTI-SLOT ITERATION -->
                         <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
                             <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6 relative">
                                 <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[10px] font-bold text-red-500 bg-red-100 hover:bg-red-200 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove Slot</button>
@@ -604,6 +624,7 @@
                             </div>
                         </template>
 
+                        <!-- Add Slot Button -->
                         <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex justify-center items-center">
                             + Add Another Booking Slot
                         </button>
@@ -613,6 +634,7 @@
                             <div><label class="form-label">Total Base Amount</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600" x-model="bookingForm.baseAmount" readonly></div>
                         </div>
 
+                        <!-- DYNAMIC ADDITIONAL CHARGES UI -->
                         <div class="border border-slate-200 border-dashed rounded-xl p-6 mb-8 bg-white">
                             <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-6' : ''">
                                 <div>
@@ -647,6 +669,7 @@
                             <input type="text" class="bg-transparent text-right text-4xl font-black text-blue-900 outline-none w-1/2" x-model="bookingForm.grandTotal" readonly>
                         </div>
 
+                        <!-- CONDITIONAL PAYMENT UI -->
                         <div class="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="form-label">Mode of Payment</label>
@@ -669,6 +692,7 @@
                     </div>
                 </div>
 
+                <!-- VIEW 4: MASTER LIST -->
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -713,6 +737,7 @@
             </main>
         </div>
         
+        <!-- PRINT CONFIRMATION MODAL -->
         <div x-show="showReceiptModal" style="display: none;" class="fixed inset-0 z-[90] flex items-center justify-center">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="finishAndRedirect()"></div>
             <div class="bg-white rounded-2xl shadow-2xl z-[100] max-w-md w-full p-8 transform transition-all" x-transition.scale.origin.bottom>
@@ -734,6 +759,7 @@
         </div>
     </div>
 
+    <!-- RECEIPT VIEW (PRINT EXCLUSIVE TARGET) -->
     <div id="print-receipt-wrapper" class="hidden text-black font-sans w-full max-w-[800px] mx-auto">
         <template x-if="lastSavedBooking">
             <div class="flex flex-col min-h-screen">
@@ -826,6 +852,7 @@
         </template>
     </div>
 
+    <!-- SYSTEM TOAST -->
     <div id="toast" class="print:hidden fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
         <div id="icon-bg" class="p-2 rounded-lg mr-4">
             <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
