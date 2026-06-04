@@ -123,6 +123,16 @@
                     this.loadMasterList();
                 },
 
+                // HELPER: Convert string time ("2:00 PM") to 24-hour integer (14) for math
+                parseTimeInt(timeStr) {
+                    if(!timeStr) return 0;
+                    const [time, modifier] = timeStr.split(' ');
+                    let hours = parseInt(time.split(':')[0], 10);
+                    if (hours === 12 && modifier === 'AM') hours = 0;
+                    if (hours < 12 && modifier === 'PM') hours += 12;
+                    return hours;
+                },
+
                 getAvailableFacilities(sport) { return sport ? this.facilityMap[sport] : []; },
 
                 handleSportTypeChange(slot, index) {
@@ -149,16 +159,17 @@
                 validateForm() {
                     this.errors = { fullName: false, email: false, paymentReference: false, slots: [] }; 
                     let errorCount = 0;
+                    let conflictError = null;
 
                     if (!this.bookingForm.fullName) { this.errors.fullName = true; errorCount++; }
                     if (!this.bookingForm.email) { this.errors.email = true; errorCount++; }
 
-                    // Reference Number Validation
                     if (this.bookingForm.paymentMode !== 'Cash' && !this.bookingForm.paymentReference.trim()) {
                         this.errors.paymentReference = true;
                         errorCount++;
                     }
 
+                    // Loop 1: Check for empty fields
                     this.bookingForm.slots.forEach((slot, index) => {
                         let slotErrors = {};
                         if (!slot.date) { slotErrors.date = true; errorCount++; }
@@ -169,6 +180,43 @@
                         this.errors.slots[index] = slotErrors;
                     });
 
+                    // Loop 2: NEW ANTI-DOUBLE BOOKING ENGINE
+                    // Only runs if the basic fields are filled out properly
+                    if (errorCount === 0) {
+                        for (let i = 0; i < this.bookingForm.slots.length; i++) {
+                            let newSlot = this.bookingForm.slots[i];
+                            const newStart = this.parseTimeInt(newSlot.timeStart);
+                            const newEnd = this.parseTimeInt(newSlot.timeEnd);
+
+                            // Check against every existing booking in memory
+                            for (let existing of this.localBookings) {
+                                if (existing.date === newSlot.date) {
+                                    
+                                    // Logic handles if "WHOLE GYM" was booked, it blocks all individual courts
+                                    const courtConflict = (existing.court === newSlot.court) ||
+                                                          (existing.court === 'WHOLE GYM' || existing.court === 'ALL 3 COURTS') ||
+                                                          (newSlot.court === 'WHOLE GYM' || newSlot.court === 'ALL 3 COURTS');
+                                    
+                                    if (courtConflict) {
+                                        const existStart = this.parseTimeInt(existing.timeStart);
+                                        const existEnd = this.parseTimeInt(existing.timeEnd);
+                                        
+                                        // The math formula to detect overlapping time ranges
+                                        if (newStart < existEnd && newEnd > existStart) {
+                                            this.errors.slots[i].timeStart = true;
+                                            this.errors.slots[i].timeEnd = true;
+                                            this.errors.slots[i].court = true;
+                                            conflictError = `Double Booking Blocked: ${newSlot.court} is already reserved on ${newSlot.date} between ${existing.timeStart} and ${existing.timeEnd}.`;
+                                            break; 
+                                        }
+                                    }
+                                }
+                            }
+                            if (conflictError) break; // Break outer loop if conflict found
+                        }
+                    }
+
+                    if (conflictError) return conflictError; // Prioritize overlap message
                     if (errorCount === 1) {
                         if (this.errors.fullName) return "Full Name is required.";
                         if (this.errors.email) return "Email Address is required.";
@@ -184,18 +232,10 @@
                     let totalAmount = 0;
                     let totalHours = 0;
 
-                    const parseTime = (timeStr) => {
-                        const [time, modifier] = timeStr.split(' ');
-                        let hours = parseInt(time.split(':')[0], 10);
-                        if (hours === 12 && modifier === 'AM') hours = 0;
-                        if (hours < 12 && modifier === 'PM') hours += 12;
-                        return hours;
-                    };
-
                     this.bookingForm.slots.forEach(slot => {
                         if (slot.timeStart && slot.timeEnd) {
-                            const startHour = parseTime(slot.timeStart);
-                            const endHour = parseTime(slot.timeEnd);
+                            const startHour = this.parseTimeInt(slot.timeStart);
+                            const endHour = this.parseTimeInt(slot.timeEnd);
 
                             if (endHour > startHour) {
                                 totalHours += (endHour - startHour);
@@ -217,26 +257,15 @@
                             if (!isNaN(amt)) { extraChargesTotal += amt; }
                         });
                     }
-
                     this.bookingForm.grandTotal = (totalAmount + extraChargesTotal).toFixed(2);
                 },
 
                 getBookingData(block, court) {
-                    const parseTime = (timeStr) => {
-                        if(!timeStr) return 0;
-                        const [time, modifier] = timeStr.split(' ');
-                        let hours = parseInt(time.split(':')[0], 10);
-                        if (hours === 12 && modifier === 'AM') hours = 0;
-                        if (hours < 12 && modifier === 'PM') hours += 12;
-                        return hours;
-                    };
-
                     const blockHour = parseInt(block.start.split(':')[0], 10); 
-
                     for (let b of this.localBookings) {
                         if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
-                            const startH = parseTime(b.timeStart);
-                            const endH = parseTime(b.timeEnd);
+                            const startH = this.parseTimeInt(b.timeStart);
+                            const endH = this.parseTimeInt(b.timeEnd);
                             
                             if (blockHour >= startH && blockHour < endH) {
                                 return { booked: true, title: b.customer, bookingRef: b.ref };
@@ -265,12 +294,10 @@
                         id: Date.now(), date: this.currentDate, sportType: 'Basketball', court: court, remarks: this.remarksMap['Basketball'], timeStart: block.queryTime, timeEnd: ''
                     }];
                     this.errors.slots = [{}]; 
-
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
                     if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
                         this.bookingForm.slots[0].timeEnd = this.timeOptions[startIndex + 1];
                     }
-
                     this.calculateTotals();
                     this.currentView = 'new-booking';
                 },
@@ -301,7 +328,7 @@
                     setTimeout(() => { 
                         toast.classList.remove('translate-y-0', 'opacity-100'); 
                         toast.classList.add('translate-y-20', 'opacity-0'); 
-                    }, 4000);
+                    }, 5000); // Increased toast time to 5 seconds so they can read long overlap messages
                 },
 
                 switchView(viewName) {
@@ -317,7 +344,6 @@
                         const result = await response.json();
                         if (result.status === 'success' && result.data) {
                             this.masterList = result.data;
-                            
                             let newLocalBookings = [];
                             result.data.forEach(item => {
                                 newLocalBookings.push({
@@ -325,7 +351,6 @@
                                 });
                             });
                             this.localBookings = newLocalBookings;
-                            
                             localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
                             localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
                         }
@@ -355,17 +380,14 @@
                         printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                     }));
 
-                    // Save directly to memory arrays so the UI updates instantly
                     this.bookingForm.slots.forEach(slot => {
                         this.localBookings.push({
                             ref: refNumber, customer: this.bookingForm.fullName, date: slot.date, court: slot.court, timeStart: slot.timeStart, timeEnd: slot.timeEnd
                         });
                     });
                     
-                    // Format payment mode safely so we don't have to change Google Sheet Columns
                     const safePaymentString = this.bookingForm.paymentMode === 'Cash' 
-                        ? 'Cash' 
-                        : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
+                        ? 'Cash' : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
 
                     this.masterList.unshift({
                         bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
@@ -373,15 +395,13 @@
                         facility: this.bookingForm.slots[0].court, timeStart: this.bookingForm.slots[0].timeStart, timeEnd: this.bookingForm.slots[0].timeEnd, grandTotal: this.bookingForm.grandTotal
                     });
 
-                    // Cache to browser memory immediately (Resists accidental refreshes)
                     localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
                     localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
 
-                    // Push payload to Google Sheet using the safely formatted payment string
                     const backendPayload = { ...this.bookingForm, bookingRef: refNumber, paymentMode: safePaymentString };
 
                     try {
-                        await fetch(this.scriptURL, {
+                        const response = await fetch(this.scriptURL, {
                             method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify(backendPayload)
                         });
@@ -403,7 +423,6 @@
                     this.showReceiptModal = false;
                     const targetDate = this.lastSavedBooking.slots[0].date;
                     
-                    // Full reset including the new reference string
                     this.bookingForm = { 
                         fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
                         slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
@@ -411,7 +430,6 @@
                     };
                     this.errors = { paymentReference: false, slots: [{}] }; 
                     this.lastSavedBooking = null;
-
                     this.currentDate = targetDate;
                     this.switchView('calendar');
                 }
