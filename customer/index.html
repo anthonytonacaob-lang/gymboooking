@@ -55,6 +55,7 @@
                 currentDate: new Date().toISOString().split('T')[0],
                 acceptedTerms: false, 
                 showOfficeHoursError: false, 
+                generatedRefNumber: '', // NEW: Stores the ref number for the success screen
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
@@ -93,7 +94,6 @@
                 async fetchCalendarData() {
                     if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) { this.isLoading = false; return; }
                     try {
-                        // FIX: Added cache-buster to force fresh data from Google Apps Script
                         const cacheBuster = (this.scriptURL.includes('?') ? '&' : '?') + 'nocache=' + new Date().getTime();
                         const response = await fetch(this.scriptURL + cacheBuster);
                         const result = await response.json();
@@ -101,7 +101,6 @@
                         if (result.status === 'success' && result.data) {
                             let secureBookings = [];
                             result.data.forEach(item => {
-                                // Explicitly check for Confirmed or Pending to block off slots
                                 if (item.status === 'Confirmed' || item.status === 'Pending') {
                                     secureBookings.push({ date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd });
                                 }
@@ -218,10 +217,11 @@
                     }
 
                     this.isLoading = true;
-                    const refNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
+                    // Generate and Save the Ref Number to Alpine State
+                    this.generatedRefNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
                     
                     const payload = {
-                        bookingRef: refNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
+                        bookingRef: this.generatedRefNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
                         address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: this.form.paymentMode, baseAmount: this.estimatedTotal,
                         grandTotal: this.estimatedTotal, additionalCharges: [],
                         slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Agreed to Digital Waiver' }]
@@ -422,27 +422,23 @@
                             <label class="form-label mb-3">Payment Method</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 
-                                <label class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-colors"
-                                       :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-sm ring-1 ring-brand-blue/20' : 'border-slate-200 bg-white hover:bg-slate-50'">
+                                <label class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-colors" :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-sm ring-1 ring-brand-blue/20' : 'border-slate-200 bg-white hover:bg-slate-50'">
                                     <input type="radio" x-model="form.paymentMode" value="Cash" class="hidden">
                                     <span class="font-bold text-sm text-brand-dark">Cash</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Pay at Cashier</span>
                                 </label>
                                 
-                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
-                                       title="This mode of payment will be available soon.">
+                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
                                     <input type="radio" disabled class="hidden">
                                     <span class="font-bold text-sm text-slate-500">GCash</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
                                 </label>
                                 
-                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
-                                       title="This mode of payment will be available soon.">
+                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
                                     <input type="radio" disabled class="hidden">
                                     <span class="font-bold text-sm text-slate-500">Bank Transfer</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
                                 </label>
-
                             </div>
                         </div>
                     </div>
@@ -456,11 +452,18 @@
                     <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                     </div>
-                    <h2 class="text-3xl font-black text-brand-dark mb-2">Slot Reserved!</h2>
+                    <h2 class="text-3xl font-black text-brand-dark mb-4">Slot Reserved!</h2>
                     
+                    <div class="mb-4 w-full">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Your Tracking Reference</p>
+                        <div class="bg-white border-2 border-slate-200 rounded-xl px-6 py-4 shadow-sm inline-block w-full max-w-[250px]">
+                            <span class="text-2xl font-mono font-black text-brand-blue tracking-widest" x-text="generatedRefNumber"></span>
+                        </div>
+                    </div>
+
                     <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl mt-2 mb-8">
                         <p class="text-amber-800 font-medium text-sm leading-relaxed">
-                            Please proceed to the SKILLS Cashier to settle your payment within the next <strong class="font-black text-amber-900">10 hours</strong>. Failure to pay within this window will result in automatic cancellation of your reservation.
+                            Please present your reference number to the SKILLS Cashier to settle your payment within the next <strong class="font-black text-amber-900">10 hours</strong>. Failure to pay will result in automatic cancellation.
                         </p>
                     </div>
 
