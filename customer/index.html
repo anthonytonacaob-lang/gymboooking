@@ -50,15 +50,17 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('customerApp', () => ({
-                currentView: 'welcome', // welcome -> terms -> booking-form -> success
+                currentView: 'welcome', 
                 isLoading: true, 
                 currentDate: new Date().toISOString().split('T')[0],
-                acceptedTerms: false, // Tracks if user checked the waiver box
+                acceptedTerms: false, 
+                
+                showOfficeHoursError: false, // For the restricting pop-up
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
                 // =======================================================
-                scriptURL: 'https://script.google.com/macros/s/AKfycbw9TSjON-2APwIZLML3RyOQvmv6aL0dBUUS_Tb8zmejgaz0P0ocFXkV362Q9Rtw2BuK-Q/exec',
+                scriptURL: 'https://script.google.com/macros/s/AKfycbwiLuLoNAEox-Ij17L1fYqiuG2DWlNG8YYEn-KgJkhOF90IA__g_hK2-qyLcGLT1ZHUlw/exec',
                 
                 bookingCategory: 'Regular', 
                 localBookings: [], 
@@ -80,59 +82,32 @@
                     { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' },
                     { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
+                timeOptions: [ '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM' ],
+                sportOptions: { 'Regular': ['Basketball', 'Volleyball', 'Badminton'], 'Special': ['Package A', 'Package B', 'Package C'] },
+                facilityMap: { 'Basketball': ['Court 1', 'Court 2', 'Court 3'], 'Volleyball': ['Court 1', 'Court 3'], 'Badminton': ['Court 2'], 'Package A': ['WHOLE GYM'], 'Package B': ['Court 1'], 'Package C': ['ALL 3 COURTS'] },
 
-                timeOptions: [
-                    '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
-                    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
-                    '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
-                ],
-
-                sportOptions: {
-                    'Regular': ['Basketball', 'Volleyball', 'Badminton'],
-                    'Special': ['Package A', 'Package B', 'Package C']
-                },
-
-                facilityMap: {
-                    'Basketball': ['Court 1', 'Court 2', 'Court 3'],
-                    'Volleyball': ['Court 1', 'Court 3'],
-                    'Badminton': ['Court 2'],
-                    'Package A': ['WHOLE GYM'],
-                    'Package B': ['Court 1'],
-                    'Package C': ['ALL 3 COURTS']
-                },
-
-                form: {
-                    fullName: '', email: '', organization: '', sportType: '', 
-                    court: '', timeStart: '', timeEnd: '', paymentMode: 'GCash', paymentReference: ''
-                },
+                form: { fullName: '', email: '', organization: '', sportType: '', court: '', timeStart: '', timeEnd: '', paymentMode: 'Cash' },
                 errors: {},
 
-                init() {
-                    this.fetchCalendarData();
-                },
+                init() { this.fetchCalendarData(); },
 
                 async fetchCalendarData() {
-                    if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) {
-                        this.isLoading = false;
-                        return;
-                    }
+                    if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) { this.isLoading = false; return; }
                     try {
                         const response = await fetch(this.scriptURL);
                         const result = await response.json();
                         if (result.status === 'success' && result.data) {
                             let secureBookings = [];
                             result.data.forEach(item => {
-                                secureBookings.push({
-                                    date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
-                                });
+                                // Rule 2 Enforced: Exclude 'Expired' or 'Revoked' bookings from public view!
+                                if (item.status !== 'Expired' && item.status !== 'Revoked' && item.status !== 'Cancelled') {
+                                    secureBookings.push({ date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd });
+                                }
                             });
                             this.localBookings = secureBookings;
                         }
-                    } catch (error) {
-                        console.error("Calendar sync failed.");
-                    } finally {
-                        this.isLoading = false;
-                    }
+                    } catch (error) { console.error("Calendar sync failed."); } 
+                    finally { this.isLoading = false; }
                 },
 
                 parseTimeInt(timeStr) {
@@ -150,9 +125,7 @@
                         if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
                             const startH = this.parseTimeInt(b.timeStart);
                             const endH = this.parseTimeInt(b.timeEnd);
-                            if (blockHour >= startH && blockHour < endH) {
-                                return { booked: true };
-                            }
+                            if (blockHour >= startH && blockHour < endH) { return { booked: true }; }
                         }
                     }
                     return { booked: false };
@@ -164,66 +137,64 @@
                     this.currentDate = dateObj.toISOString().split('T')[0];
                 },
 
-                getAvailableFacilities(sport) { 
-                    return sport ? this.facilityMap[sport] : []; 
-                },
-
+                getAvailableFacilities(sport) { return sport ? this.facilityMap[sport] : []; },
                 handleSportTypeChange() {
                     const availableCourts = this.getAvailableFacilities(this.form.sportType);
                     this.form.court = availableCourts.length === 1 ? availableCourts[0] : '';
                 },
 
-                // Modified to route to Terms & Conditions first
                 initiateBooking(type) {
                     this.bookingCategory = type;
-                    if(type === 'Regular') {
-                        this.form.sportType = 'Basketball';
-                        this.form.court = 'Court 1';
-                    } else {
-                        this.form.sportType = 'Package A';
-                        this.form.court = 'WHOLE GYM';
-                    }
+                    if(type === 'Regular') { this.form.sportType = 'Basketball'; this.form.court = 'Court 1'; } 
+                    else { this.form.sportType = 'Package A'; this.form.court = 'WHOLE GYM'; }
                     this.acceptedTerms = false;
                     this.currentView = 'terms';
                 },
 
-                // Modified to route to Terms & Conditions first
                 fastBookSlot(court, block) {
                     this.bookingCategory = 'Regular';
                     this.form.sportType = 'Basketball'; 
                     this.form.court = court;
                     this.form.timeStart = block.queryTime;
-                    
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
-                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
-                        this.form.timeEnd = this.timeOptions[startIndex + 1];
-                    }
-                    
+                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) { this.form.timeEnd = this.timeOptions[startIndex + 1]; }
                     this.acceptedTerms = false;
                     this.currentView = 'terms';
                 },
 
-                proceedToForm() {
-                    if (this.acceptedTerms) {
-                        this.currentView = 'booking-form';
-                    }
-                },
-
+                proceedToForm() { if (this.acceptedTerms) this.currentView = 'booking-form'; },
                 goBackToWelcome() { this.currentView = 'welcome'; },
                 goBackToTerms() { this.currentView = 'terms'; },
 
                 validateForm() {
-                    this.errors = {};
-                    let isValid = true;
+                    this.errors = {}; let isValid = true;
                     if(!this.form.fullName) { this.errors.fullName = true; isValid = false; }
                     if(!this.form.email) { this.errors.email = true; isValid = false; }
                     if(!this.form.timeStart) { this.errors.timeStart = true; isValid = false; }
                     if(!this.form.timeEnd) { this.errors.timeEnd = true; isValid = false; }
                     if(!this.form.court) { this.errors.court = true; isValid = false; }
-                    if(this.form.paymentMode !== 'Cash' && !this.form.paymentReference) { 
-                        this.errors.paymentReference = true; isValid = false; 
-                    }
                     return isValid;
+                },
+
+                // Rule 1: Office Hours Validation
+                checkOfficeHours() {
+                    const now = new Date();
+                    const day = now.getDay(); 
+                    const hours = now.getHours();
+                    const minutes = now.getMinutes();
+
+                    // Block Weekends (0 = Sunday, 6 = Saturday)
+                    if (day === 0 || day === 6) return false;
+
+                    // Block anything before 8:00 AM and after 5:45 PM (17:45)
+                    const timeInMinutes = (hours * 60) + minutes;
+                    const startLimit = 8 * 60; // 480
+                    const endLimit = (17 * 60) + 45; // 1065
+
+                    if (timeInMinutes >= startLimit && timeInMinutes <= endLimit) {
+                        return true;
+                    }
+                    return false;
                 },
 
                 get estimatedTotal() {
@@ -241,21 +212,26 @@
 
                 async submitRequest() {
                     if(!this.validateForm()) return;
-                    this.isLoading = true;
                     
+                    // Trigger Rule 1 Action: Block if closed.
+                    if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) {
+                        this.showOfficeHoursError = true;
+                        return; // Prevent submission
+                    }
+
+                    this.isLoading = true;
                     const refNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
-                    const safePaymentString = this.form.paymentMode === 'Cash' ? 'Cash' : `${this.form.paymentMode} (Ref: ${this.form.paymentReference})`;
                     
                     const payload = {
                         bookingRef: refNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
-                        address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: safePaymentString, baseAmount: this.estimatedTotal,
+                        address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: this.form.paymentMode, baseAmount: this.estimatedTotal,
                         grandTotal: this.estimatedTotal, additionalCharges: [],
                         slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Agreed to Digital Waiver' }]
                     };
 
                     try {
                         await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-                        this.currentView = 'success';
+                        this.currentView = 'success'; // Triggers customized success pop-up
                         this.fetchCalendarData(); 
                     } catch (error) {
                         alert("There was a connection issue sending your request. Please try again.");
@@ -268,6 +244,21 @@
     </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased ambient-gradient min-h-screen selection:bg-brand-blue/20 selection:text-brand-blue" x-data="customerApp">
+
+    <!-- Out of Office Hours Restriction Modal -->
+    <div x-show="showOfficeHoursError" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showOfficeHoursError = false"></div>
+        <div class="bg-white rounded-3xl shadow-2xl z-[110] max-w-md w-full p-8 transform transition-all text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-5 mx-auto">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 class="text-2xl font-black text-brand-dark mb-3">Cashier is Closed</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-8">The SKILLS Cashier is currently closed. Our office hours are Monday to Friday, 8:00 AM to 5:45 PM.<br><br>Since digital payments are currently unavailable, please try again during office hours.</p>
+            <button @click="showOfficeHoursError = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-all">
+                Understood
+            </button>
+        </div>
+    </div>
 
     <nav class="absolute top-0 left-0 w-full p-6 lg:px-12 flex items-center justify-between z-20">
         <div class="flex items-center">
@@ -283,7 +274,7 @@
 
     <div class="min-h-screen flex items-center justify-center p-6 pt-28 lg:pt-6 lg:p-12 relative">
         
-        <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;" x-transition.opacity>
+        <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;">
             <div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center">
                 <svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span>
@@ -318,13 +309,11 @@
                                     
                                     <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                         <div class="p-1.5 border-l border-slate-100 h-16 relative">
-                                            
                                             <template x-if="getBookingData(block, court).booked">
                                                 <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
                                                     <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
                                                 </div>
                                             </template>
-                                            
                                             <template x-if="!getBookingData(block, court).booked">
                                                 <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
                                                     <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
@@ -386,7 +375,6 @@
                                 <li><strong>Payment:</strong> Regular games require full payment to secure a slot. Large events require a 50% non-refundable downpayment to reserve the date.</li>
                             </ul>
                         </div>
-                        
                         <div>
                             <h4 class="font-bold text-brand-dark mb-1">II. Cancellation & Rescheduling</h4>
                             <p class="text-xs text-slate-500 mb-2 leading-relaxed">Rescheduling requests are subject to the following administrative fees based on the total booking amount:</p>
@@ -397,7 +385,6 @@
                                 <li><strong>Force Majeure:</strong> In cases of typhoons, flooding, or government-mandated suspensions, bookings may be rescheduled or fully refunded without penalty.</li>
                             </ul>
                         </div>
-
                         <div>
                             <h4 class="font-bold text-brand-dark mb-1">III. Facility Waiver & Release of Liability</h4>
                             <p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">By proceeding, I declare that I am of legal age and am voluntarily requesting permission to use the Gymnasium facilities of SKILLS Inc. I am fully aware of the inherent risks involved in physical exercise and sports, including physical injury, accidents, or medical complications.</p>
@@ -414,16 +401,13 @@
                             </div>
                             <span class="text-xs font-bold text-slate-700 group-hover:text-brand-dark leading-snug">I have read and agree to the Terms & Conditions and the Waiver of Liability.</span>
                         </label>
-
-                        <button @click="proceedToForm()" :disabled="!acceptedTerms" 
-                                class="w-full font-bold py-4 rounded-xl transition-all text-sm tracking-wide shadow-sm flex justify-center items-center"
-                                :class="acceptedTerms ? 'bg-brand-dark hover:bg-black text-white shadow-floating cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
+                        <button @click="proceedToForm()" :disabled="!acceptedTerms" class="w-full font-bold py-4 rounded-xl transition-all text-sm tracking-wide shadow-sm flex justify-center items-center" :class="acceptedTerms ? 'bg-brand-dark hover:bg-black text-white shadow-floating cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
                             Proceed to Reservation Details <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                         </button>
                     </div>
                 </div>
 
-                <!-- STATE 3: DYNAMIC BOOKING FORM -->
+                <!-- STATE 3: DYNAMIC BOOKING FORM WITH NEW PAYMENT UI -->
                 <div x-show="currentView === 'booking-form'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 shrink-0">
                         <div>
@@ -479,28 +463,43 @@
                             </div>
                         </div>
 
-                        <div class="p-4 bg-brand-soft rounded-2xl border border-blue-50">
-                            <div class="flex justify-between items-center mb-4">
+                        <!-- REBUILT PAYMENT SECTION -->
+                        <div class="p-5 bg-brand-soft rounded-2xl border border-blue-50">
+                            <div class="flex justify-between items-center mb-5">
                                 <div>
                                     <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Estimated Total</span>
                                     <span class="text-[9px] text-slate-400">Subject to final admin review</span>
                                 </div>
-                                <span class="text-2xl font-black text-brand-blue" x-text="'₱' + estimatedTotal"></span>
+                                <span class="text-3xl font-black text-brand-blue" x-text="'₱' + estimatedTotal"></span>
                             </div>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="form-label">Payment Method</label>
-                                    <select class="form-input bg-white py-2.5 text-sm" x-model="form.paymentMode">
-                                        <option>GCash</option>
-                                        <option>Bank Transfer</option>
-                                        <option>Cash</option>
-                                    </select>
-                                </div>
-                                <div x-show="form.paymentMode !== 'Cash'">
-                                    <label class="form-label">Reference No. *</label>
-                                    <input type="text" class="form-input bg-white py-2.5 text-sm font-mono text-brand-blue" :class="errors.paymentReference ? '!border-red-400 bg-red-50' : ''" placeholder="Transaction ID" x-model="form.paymentReference">
-                                </div>
+                            <label class="form-label mb-3">Payment Method</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                
+                                <!-- Active Cash Option -->
+                                <label class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-colors"
+                                       :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-sm ring-1 ring-brand-blue/20' : 'border-slate-200 bg-white hover:bg-slate-50'">
+                                    <input type="radio" x-model="form.paymentMode" value="Cash" class="hidden">
+                                    <span class="font-bold text-sm text-brand-dark">Cash</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Pay at Cashier</span>
+                                </label>
+                                
+                                <!-- Disabled GCash -->
+                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
+                                       title="This mode of payment will be available soon.">
+                                    <input type="radio" disabled class="hidden">
+                                    <span class="font-bold text-sm text-slate-500">GCash</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
+                                </label>
+                                
+                                <!-- Disabled Bank Transfer -->
+                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
+                                       title="This mode of payment will be available soon.">
+                                    <input type="radio" disabled class="hidden">
+                                    <span class="font-bold text-sm text-slate-500">Bank Transfer</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
+                                </label>
+
                             </div>
                         </div>
                     </div>
@@ -510,13 +509,19 @@
                     </button>
                 </div>
 
-                <!-- STATE 4: SUCCESS CONFIRMATION -->
+                <!-- STATE 4: SUCCESS WITH 10-HOUR WARNING -->
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                     </div>
-                    <h2 class="text-3xl font-black text-brand-dark mb-2">Request Sent!</h2>
-                    <p class="text-slate-500 mb-8 font-medium text-sm">Your booking request has been forwarded to SKILLS administration. You will receive an email shortly.</p>
+                    <h2 class="text-3xl font-black text-brand-dark mb-2">Slot Reserved!</h2>
+                    
+                    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl mt-2 mb-8">
+                        <p class="text-amber-800 font-medium text-sm leading-relaxed">
+                            Please proceed to the SKILLS Cashier to settle your payment within the next <strong class="font-black text-amber-900">10 hours</strong>. Failure to pay within this window will result in automatic cancellation of your reservation.
+                        </p>
+                    </div>
+
                     <button @click="goBackToWelcome(); form.fullName=''" class="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-full hover:bg-slate-200 transition-colors">
                         Return to Start
                     </button>
