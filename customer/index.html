@@ -54,8 +54,7 @@
                 isLoading: true, 
                 currentDate: new Date().toISOString().split('T')[0],
                 acceptedTerms: false, 
-                
-                showOfficeHoursError: false, // For the restricting pop-up
+                showOfficeHoursError: false, 
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
@@ -94,13 +93,16 @@
                 async fetchCalendarData() {
                     if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) { this.isLoading = false; return; }
                     try {
-                        const response = await fetch(this.scriptURL);
+                        // FIX: Added cache-buster to force fresh data from Google Apps Script
+                        const cacheBuster = (this.scriptURL.includes('?') ? '&' : '?') + 'nocache=' + new Date().getTime();
+                        const response = await fetch(this.scriptURL + cacheBuster);
                         const result = await response.json();
+                        
                         if (result.status === 'success' && result.data) {
                             let secureBookings = [];
                             result.data.forEach(item => {
-                                // Rule 2 Enforced: Exclude 'Expired' or 'Revoked' bookings from public view!
-                                if (item.status !== 'Expired' && item.status !== 'Revoked' && item.status !== 'Cancelled') {
+                                // Explicitly check for Confirmed or Pending to block off slots
+                                if (item.status === 'Confirmed' || item.status === 'Pending') {
                                     secureBookings.push({ date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd });
                                 }
                             });
@@ -176,20 +178,17 @@
                     return isValid;
                 },
 
-                // Rule 1: Office Hours Validation
                 checkOfficeHours() {
                     const now = new Date();
                     const day = now.getDay(); 
                     const hours = now.getHours();
                     const minutes = now.getMinutes();
 
-                    // Block Weekends (0 = Sunday, 6 = Saturday)
                     if (day === 0 || day === 6) return false;
 
-                    // Block anything before 8:00 AM and after 5:45 PM (17:45)
                     const timeInMinutes = (hours * 60) + minutes;
-                    const startLimit = 8 * 60; // 480
-                    const endLimit = (17 * 60) + 45; // 1065
+                    const startLimit = 8 * 60; 
+                    const endLimit = (17 * 60) + 45; 
 
                     if (timeInMinutes >= startLimit && timeInMinutes <= endLimit) {
                         return true;
@@ -213,10 +212,9 @@
                 async submitRequest() {
                     if(!this.validateForm()) return;
                     
-                    // Trigger Rule 1 Action: Block if closed.
                     if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) {
                         this.showOfficeHoursError = true;
-                        return; // Prevent submission
+                        return; 
                     }
 
                     this.isLoading = true;
@@ -231,7 +229,7 @@
 
                     try {
                         await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-                        this.currentView = 'success'; // Triggers customized success pop-up
+                        this.currentView = 'success'; 
                         this.fetchCalendarData(); 
                     } catch (error) {
                         alert("There was a connection issue sending your request. Please try again.");
@@ -245,7 +243,6 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased ambient-gradient min-h-screen selection:bg-brand-blue/20 selection:text-brand-blue" x-data="customerApp">
 
-    <!-- Out of Office Hours Restriction Modal -->
     <div x-show="showOfficeHoursError" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showOfficeHoursError = false"></div>
         <div class="bg-white rounded-3xl shadow-2xl z-[110] max-w-md w-full p-8 transform transition-all text-center">
@@ -283,56 +280,8 @@
 
         <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-8 lg:gap-16 xl:gap-20 items-center">
             
-            <!-- LEFT COLUMN: Live Calendar -->
-            <div class="w-full lg:w-7/12 flex flex-col">
-                <div class="flex items-center mb-4">
-                    <div class="bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-white flex items-center gap-3">
-                        <button @click="changeDay(-1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&lt;</button>
-                        <input type="date" class="border-none text-sm font-bold text-brand-dark px-2 h-full text-center outline-none bg-transparent w-36 cursor-pointer" x-model="currentDate">
-                        <button @click="changeDay(1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&gt;</button>
-                    </div>
-                </div>
-
-                <div class="w-full h-[500px] lg:h-[650px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
-                    <div class="overflow-y-auto overflow-x-auto flex-1 hide-scroll">
-                        <div class="min-w-[500px]">
-                            <div class="grid grid-cols-[90px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
-                                <div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 2</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div>
-                            </div>
-                            
-                            <template x-for="block in timeBlocks" :key="block.start">
-                                <div class="grid grid-cols-[90px_1fr_1fr_1fr] border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors">
-                                    <div class="p-2 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center whitespace-nowrap" x-text="block.label.split(' - ')[0]"></div>
-                                    
-                                    <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
-                                        <div class="p-1.5 border-l border-slate-100 h-16 relative">
-                                            <template x-if="getBookingData(block, court).booked">
-                                                <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
-                                                    <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
-                                                </div>
-                                            </template>
-                                            <template x-if="!getBookingData(block, court).booked">
-                                                <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
-                                                    <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
-                                                    <span class="absolute opacity-100 group-hover:opacity-0 transition-opacity tracking-wide">Available</span>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN: Interaction Panel -->
-            <div class="w-full lg:w-5/12 relative h-[550px] lg:h-[650px]">
+            <div class="w-full lg:w-5/12 relative h-[550px] lg:h-[650px] order-1 lg:order-1">
                 
-                <!-- STATE 1: SELECTION MENU -->
                 <div x-show="currentView === 'welcome'" x-transition.opacity class="absolute inset-0 flex flex-col justify-center text-center lg:text-left">
                     <h1 class="text-5xl lg:text-6xl font-black text-brand-dark tracking-tight mb-4 leading-tight">Welcome to <br>SKILLS Gym</h1>
                     <p class="text-lg text-slate-500 font-medium mb-12">Select an option or click an available slot on the calendar to begin.</p>
@@ -355,7 +304,6 @@
                     </div>
                 </div>
 
-                <!-- STATE 2: TERMS & CONDITIONS WAIVER -->
                 <div x-show="currentView === 'terms'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
                         <div>
@@ -407,7 +355,6 @@
                     </div>
                 </div>
 
-                <!-- STATE 3: DYNAMIC BOOKING FORM WITH NEW PAYMENT UI -->
                 <div x-show="currentView === 'booking-form'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 shrink-0">
                         <div>
@@ -463,7 +410,6 @@
                             </div>
                         </div>
 
-                        <!-- REBUILT PAYMENT SECTION -->
                         <div class="p-5 bg-brand-soft rounded-2xl border border-blue-50">
                             <div class="flex justify-between items-center mb-5">
                                 <div>
@@ -476,7 +422,6 @@
                             <label class="form-label mb-3">Payment Method</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 
-                                <!-- Active Cash Option -->
                                 <label class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-colors"
                                        :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-sm ring-1 ring-brand-blue/20' : 'border-slate-200 bg-white hover:bg-slate-50'">
                                     <input type="radio" x-model="form.paymentMode" value="Cash" class="hidden">
@@ -484,7 +429,6 @@
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Pay at Cashier</span>
                                 </label>
                                 
-                                <!-- Disabled GCash -->
                                 <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
                                        title="This mode of payment will be available soon.">
                                     <input type="radio" disabled class="hidden">
@@ -492,7 +436,6 @@
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
                                 </label>
                                 
-                                <!-- Disabled Bank Transfer -->
                                 <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" 
                                        title="This mode of payment will be available soon.">
                                     <input type="radio" disabled class="hidden">
@@ -509,7 +452,6 @@
                     </button>
                 </div>
 
-                <!-- STATE 4: SUCCESS WITH 10-HOUR WARNING -->
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
@@ -527,6 +469,51 @@
                     </button>
                 </div>
 
+            </div>
+
+            <div class="w-full lg:w-7/12 flex flex-col order-2 lg:order-2">
+                <div class="flex items-center mb-4">
+                    <div class="bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-white flex items-center gap-3">
+                        <button @click="changeDay(-1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&lt;</button>
+                        <input type="date" class="border-none text-sm font-bold text-brand-dark px-2 h-full text-center outline-none bg-transparent w-36 cursor-pointer" x-model="currentDate">
+                        <button @click="changeDay(1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&gt;</button>
+                    </div>
+                </div>
+
+                <div class="w-full h-[500px] lg:h-[650px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
+                    <div class="overflow-y-auto overflow-x-auto flex-1 hide-scroll">
+                        <div class="min-w-[500px]">
+                            <div class="grid grid-cols-[115px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
+                                <div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 2</div>
+                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div>
+                            </div>
+                            
+                            <template x-for="block in timeBlocks" :key="block.start">
+                                <div class="grid grid-cols-[115px_1fr_1fr_1fr] border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors">
+                                    <div class="p-2 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
+                                    
+                                    <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
+                                        <div class="p-1.5 border-l border-slate-100 h-16 relative">
+                                            <template x-if="getBookingData(block, court).booked">
+                                                <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
+                                                    <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
+                                                </div>
+                                            </template>
+                                            <template x-if="!getBookingData(block, court).booked">
+                                                <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
+                                                    <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
+                                                    <span class="absolute opacity-100 group-hover:opacity-0 transition-opacity tracking-wide">Available</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
