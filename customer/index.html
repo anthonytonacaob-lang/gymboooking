@@ -4,90 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Portal | SKILLS Gym</title>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: { brand: { blue: '#2D5DF6', blueHover: '#1B44C8', dark: '#0F172A', soft: '#F3F6FD' } },
-                    boxShadow: { 'saas': '0 20px 40px -15px rgba(0,0,0,0.03)', 'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.12)' }
-                }
-            }
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { blue: '#2D5DF6', blueHover: '#1B44C8', dark: '#0F172A', soft: '#F3F6FD' } }, boxShadow: { 'saas': '0 20px 40px -15px rgba(0,0,0,0.03)', 'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.12)' } } }
         }
     </script>
-    
     <style type="text/tailwindcss">
         @layer components {
-            .form-input { 
-                @apply w-full rounded-2xl border border-slate-200/80 bg-white py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/15 sm:text-sm font-semibold shadow-sm; 
-            }
+            .form-input { @apply w-full rounded-2xl border border-slate-200/80 bg-white py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/15 sm:text-sm font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed; }
             .form-label { @apply mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-500; }
-            select.form-input {
-                @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-                background-position: right 1.25rem center;
-                background-size: 1.2em 1.2em;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            }
+            select.form-input { @apply appearance-none bg-no-repeat pr-10 cursor-pointer; background-position: right 1.25rem center; background-size: 1.2em 1.2em; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); }
             input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
             input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
         }
         .ambient-gradient { background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%); background-attachment: fixed; }
-        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
-    
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('customerApp', () => ({
                 currentView: 'welcome', 
-                isLoading: true, 
-                currentDate: new Date().toISOString().split('T')[0],
-                acceptedTerms: false, 
-                showOfficeHoursError: false, 
-                generatedRefNumber: '', // NEW: Stores the ref number for the success screen
+                isLoading: true, currentDate: new Date().toISOString().split('T')[0],
+                acceptedTerms: false, showOfficeHoursError: false, generatedRefNumber: '',
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
                 // =======================================================
                 scriptURL: 'https://script.google.com/macros/s/AKfycbwiLuLoNAEox-Ij17L1fYqiuG2DWlNG8YYEn-KgJkhOF90IA__g_hK2-qyLcGLT1ZHUlw/exec',
                 
-                bookingCategory: 'Regular', 
-                localBookings: [], 
-
+                bookingCategory: 'Regular', localBookings: [], 
                 timeBlocks: [
-                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
-                    { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
-                    { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' },
-                    { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' },
-                    { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' },
-                    { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' },
-                    { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' },
-                    { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
-                    { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' },
-                    { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' },
-                    { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' },
-                    { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' },
-                    { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' },
-                    { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' },
-                    { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
+                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' }, { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' }, { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' }, { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' }, { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' }, { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' }, { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' }, { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' }, { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' }, { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' }, { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' }, { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' }, { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' }, { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' }, { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
                 timeOptions: [ '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM' ],
                 sportOptions: { 'Regular': ['Basketball', 'Volleyball', 'Badminton'], 'Special': ['Package A', 'Package B', 'Package C'] },
-                facilityMap: { 'Basketball': ['Court 1', 'Court 2', 'Court 3'], 'Volleyball': ['Court 1', 'Court 3'], 'Badminton': ['Court 2'], 'Package A': ['WHOLE GYM'], 'Package B': ['Court 1'], 'Package C': ['Court 1', 'Court 2', 'Court 3'] },
+                facilityMap: { 'Basketball': ['Court 1', 'Court 2', 'Court 3'], 'Volleyball': ['Court 1', 'Court 3'], 'Badminton': ['Court 2'], 'Package A': ['WHOLE GYM'], 'Package B': ['Court 1'], 'Package C': ['ALL 3 COURTS'] },
 
-                form: { fullName: '', email: '', organization: '', sportType: '', court: '', timeStart: '', timeEnd: '', paymentMode: 'Cash' },
-                errors: {},
+                form: { fullName: '', email: '', contactNumber: '', organization: '', paymentMode: 'Cash', paymentReference: '', grandTotal: '0.00', slots: [] },
+                errors: { slots: [] },
 
                 init() { this.fetchCalendarData(); },
 
@@ -97,18 +60,12 @@
                         const cacheBuster = (this.scriptURL.includes('?') ? '&' : '?') + 'nocache=' + new Date().getTime();
                         const response = await fetch(this.scriptURL + cacheBuster);
                         const result = await response.json();
-                        
                         if (result.status === 'success' && result.data) {
                             let secureBookings = [];
-                            result.data.forEach(item => {
-                                if (item.status === 'Confirmed' || item.status === 'Pending') {
-                                    secureBookings.push({ date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd });
-                                }
-                            });
+                            result.data.forEach(item => { if (item.status === 'Confirmed' || item.status === 'Pending') { secureBookings.push({ date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd }); } });
                             this.localBookings = secureBookings;
                         }
-                    } catch (error) { console.error("Calendar sync failed."); } 
-                    finally { this.isLoading = false; }
+                    } catch (error) { console.error("Calendar sync failed."); } finally { this.isLoading = false; }
                 },
 
                 parseTimeInt(timeStr) {
@@ -120,47 +77,67 @@
                     return hours;
                 },
 
+                // ==== CLIENT-SIDE DOUBLE BOOKING PREVENTION ====
+                getAvailableTimeStarts(slot) {
+                    if (!slot.date || !slot.court) return this.timeOptions.slice(0,-1);
+                    return this.timeOptions.slice(0, -1).filter(time => {
+                        const h = this.parseTimeInt(time);
+                        for (let b of this.localBookings) {
+                            if (b.date === slot.date && (b.court === slot.court || b.court.includes('WHOLE') || slot.court.includes('WHOLE') || b.court.includes('ALL') || slot.court.includes('ALL'))) {
+                                const s = this.parseTimeInt(b.timeStart); const e = this.parseTimeInt(b.timeEnd);
+                                if (h >= s && h < e) return false;
+                            }
+                        }
+                        return true;
+                    });
+                },
+                getAvailableTimeEnds(slot) {
+                    if (!slot.date || !slot.court || !slot.timeStart) return [];
+                    const startH = this.parseTimeInt(slot.timeStart);
+                    return this.timeOptions.slice(1).filter(time => {
+                        const h = this.parseTimeInt(time);
+                        if (h <= startH) return false;
+                        for (let b of this.localBookings) {
+                            if (b.date === slot.date && (b.court === slot.court || b.court.includes('WHOLE') || slot.court.includes('WHOLE') || b.court.includes('ALL') || slot.court.includes('ALL'))) {
+                                const s = this.parseTimeInt(b.timeStart); const e = this.parseTimeInt(b.timeEnd);
+                                if (s < h && e > startH) return false; 
+                            }
+                        }
+                        return true;
+                    });
+                },
+
                 getBookingData(block, court) {
                     const blockHour = parseInt(block.start.split(':')[0], 10); 
                     for (let b of this.localBookings) {
                         if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
-                            const startH = this.parseTimeInt(b.timeStart);
-                            const endH = this.parseTimeInt(b.timeEnd);
+                            const startH = this.parseTimeInt(b.timeStart); const endH = this.parseTimeInt(b.timeEnd);
                             if (blockHour >= startH && blockHour < endH) { return { booked: true }; }
                         }
                     }
                     return { booked: false };
                 },
 
-                changeDay(offset) {
-                    let dateObj = new Date(this.currentDate);
-                    dateObj.setDate(dateObj.getDate() + offset);
-                    this.currentDate = dateObj.toISOString().split('T')[0];
-                },
-
+                changeDay(offset) { let dateObj = new Date(this.currentDate); dateObj.setDate(dateObj.getDate() + offset); this.currentDate = dateObj.toISOString().split('T')[0]; },
                 getAvailableFacilities(sport) { return sport ? this.facilityMap[sport] : []; },
-                handleSportTypeChange() {
-                    const availableCourts = this.getAvailableFacilities(this.form.sportType);
-                    this.form.court = availableCourts.length === 1 ? availableCourts[0] : '';
+                handleSportTypeChange(slot, index) { const availableCourts = this.getAvailableFacilities(slot.sportType); slot.court = availableCourts.length === 1 ? availableCourts[0] : ''; slot.timeStart = ''; slot.timeEnd = ''; this.calculateTotals(); },
+
+                addSlot(defaultTime = '', defaultEnd = '', defaultCourt = '') {
+                    this.form.slots.push({ id: Date.now() + Math.random(), date: this.currentDate, sportType: this.bookingCategory === 'Regular' ? 'Basketball' : 'Package A', court: defaultCourt || (this.bookingCategory === 'Regular' ? 'Court 1' : 'WHOLE GYM'), timeStart: defaultTime, timeEnd: defaultEnd });
+                    this.errors.slots.push({}); this.calculateTotals();
                 },
+                removeSlot(index) { if (this.form.slots.length > 1) { this.form.slots.splice(index, 1); this.errors.slots.splice(index, 1); this.calculateTotals(); } },
 
                 initiateBooking(type) {
-                    this.bookingCategory = type;
-                    if(type === 'Regular') { this.form.sportType = 'Basketball'; this.form.court = 'Court 1'; } 
-                    else { this.form.sportType = 'Package A'; this.form.court = 'WHOLE GYM'; }
-                    this.acceptedTerms = false;
-                    this.currentView = 'terms';
+                    this.bookingCategory = type; this.form.slots = []; this.errors.slots = [];
+                    this.addSlot(); this.acceptedTerms = false; this.currentView = 'terms';
                 },
-
                 fastBookSlot(court, block) {
-                    this.bookingCategory = 'Regular';
-                    this.form.sportType = 'Basketball'; 
-                    this.form.court = court;
-                    this.form.timeStart = block.queryTime;
+                    this.bookingCategory = 'Regular'; this.form.slots = []; this.errors.slots = [];
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
-                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) { this.form.timeEnd = this.timeOptions[startIndex + 1]; }
-                    this.acceptedTerms = false;
-                    this.currentView = 'terms';
+                    let endTime = startIndex !== -1 && startIndex < this.timeOptions.length - 1 ? this.timeOptions[startIndex + 1] : '';
+                    this.addSlot(block.queryTime, endTime, court);
+                    this.acceptedTerms = false; this.currentView = 'terms';
                 },
 
                 proceedToForm() { if (this.acceptedTerms) this.currentView = 'booking-form'; },
@@ -168,74 +145,76 @@
                 goBackToTerms() { this.currentView = 'terms'; },
 
                 validateForm() {
-                    this.errors = {}; let isValid = true;
+                    this.errors = { fullName: false, email: false, contactNumber: false, paymentReference: false, slots: [] }; let isValid = true;
                     if(!this.form.fullName) { this.errors.fullName = true; isValid = false; }
                     if(!this.form.email) { this.errors.email = true; isValid = false; }
-                    if(!this.form.timeStart) { this.errors.timeStart = true; isValid = false; }
-                    if(!this.form.timeEnd) { this.errors.timeEnd = true; isValid = false; }
-                    if(!this.form.court) { this.errors.court = true; isValid = false; }
+                    if(!this.form.contactNumber) { this.errors.contactNumber = true; isValid = false; }
+                    
+                    this.form.slots.forEach((slot, index) => {
+                        let slotErr = {};
+                        if(!slot.date) { slotErr.date = true; isValid = false; }
+                        if(!slot.court) { slotErr.court = true; isValid = false; }
+                        if(!slot.timeStart) { slotErr.timeStart = true; isValid = false; }
+                        if(!slot.timeEnd) { slotErr.timeEnd = true; isValid = false; }
+                        this.errors.slots[index] = slotErr;
+                    });
                     return isValid;
                 },
 
+                // ==== STRICT OFFICE HOURS LOGIC ====
                 checkOfficeHours() {
-                    const now = new Date();
+                    const now = new Date(); 
                     const day = now.getDay(); 
-                    const hours = now.getHours();
+                    const hours = now.getHours(); 
                     const minutes = now.getMinutes();
-
+                    
+                    // 0 = Sunday, 6 = Saturday
                     if (day === 0 || day === 6) return false;
-
+                    
                     const timeInMinutes = (hours * 60) + minutes;
-                    const startLimit = 8 * 60; 
-                    const endLimit = (17 * 60) + 45; 
-
-                    if (timeInMinutes >= startLimit && timeInMinutes <= endLimit) {
-                        return true;
-                    }
-                    return false;
+                    const startLimit = 8 * 60; // 8:00 AM
+                    const endLimit = (17 * 60) + 45; // 5:45 PM
+                    
+                    return (timeInMinutes >= startLimit && timeInMinutes <= endLimit);
                 },
 
-                get estimatedTotal() {
-                    if(!this.form.timeStart || !this.form.timeEnd) return "0.00";
-                    let startIdx = this.timeOptions.indexOf(this.form.timeStart);
-                    let endIdx = this.timeOptions.indexOf(this.form.timeEnd);
-                    if(startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return "0.00";
-                    let hours = endIdx - startIdx;
-                    let dayRate = 450;
-                    if (this.form.sportType === 'Package A') dayRate = 1500;
-                    else if (this.form.sportType === 'Package B') dayRate = 600;
-                    else if (this.form.sportType === 'Package C') dayRate = 550;
-                    return (hours * dayRate).toFixed(2);
+                calculateTotals() {
+                    let totalAmount = 0;
+                    this.form.slots.forEach(slot => {
+                        if (slot.timeStart && slot.timeEnd) {
+                            const startHour = this.parseTimeInt(slot.timeStart); const endHour = this.parseTimeInt(slot.timeEnd);
+                            if (endHour > startHour) {
+                                let dayRate = 450;
+                                if (slot.sportType === 'Package A') dayRate = 1500; else if (slot.sportType === 'Package B') dayRate = 600; else if (slot.sportType === 'Package C') dayRate = 550;
+                                totalAmount += ((endHour - startHour) * dayRate);
+                            }
+                        }
+                    });
+                    this.form.grandTotal = totalAmount.toFixed(2);
                 },
 
                 async submitRequest() {
                     if(!this.validateForm()) return;
                     
-                    if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) {
-                        this.showOfficeHoursError = true;
+                    // Strict Validation: Restrict if outside office hours
+                    if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) { 
+                        this.showOfficeHoursError = true; 
                         return; 
                     }
-
+                    
                     this.isLoading = true;
-                    // Generate and Save the Ref Number to Alpine State
                     this.generatedRefNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
                     
                     const payload = {
-                        bookingRef: this.generatedRefNumber, fullName: this.form.fullName, email: this.form.email, organization: this.form.organization || 'Customer Portal Request',
-                        address: 'Online Submission', idType: 'N/A', idNumber: 'N/A', paymentMode: this.form.paymentMode, baseAmount: this.estimatedTotal,
-                        grandTotal: this.estimatedTotal, additionalCharges: [],
-                        slots: [{ date: this.currentDate, sportType: this.form.sportType, court: this.form.court, timeStart: this.form.timeStart, timeEnd: this.form.timeEnd, remarks: 'Agreed to Digital Waiver' }]
+                        bookingRef: this.generatedRefNumber, fullName: this.form.fullName, email: this.form.email, contactNumber: this.form.contactNumber, organization: this.form.organization || 'Customer Portal Request',
+                        paymentMode: this.form.paymentMode, baseAmount: this.form.grandTotal, grandTotal: this.form.grandTotal,
+                        slots: this.form.slots.map(s => ({ date: s.date, sportType: s.sportType, court: s.court, timeStart: s.timeStart, timeEnd: s.timeEnd, remarks: 'Agreed to Digital Waiver' }))
                     };
 
                     try {
                         await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-                        this.currentView = 'success'; 
-                        this.fetchCalendarData(); 
-                    } catch (error) {
-                        alert("There was a connection issue sending your request. Please try again.");
-                    } finally {
-                        this.isLoading = false;
-                    }
+                        this.currentView = 'success'; this.fetchCalendarData(); 
+                    } catch (error) { alert("There was a connection issue sending your request. Please try again."); } finally { this.isLoading = false; }
                 }
             }))
         })
@@ -246,270 +225,156 @@
     <div x-show="showOfficeHoursError" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showOfficeHoursError = false"></div>
         <div class="bg-white rounded-3xl shadow-2xl z-[110] max-w-md w-full p-8 transform transition-all text-center">
-            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-5 mx-auto">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-5 mx-auto"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             <h3 class="text-2xl font-black text-brand-dark mb-3">Cashier is Closed</h3>
             <p class="text-slate-500 text-sm leading-relaxed mb-8">The SKILLS Cashier is currently closed. Our office hours are Monday to Friday, 8:00 AM to 5:45 PM.<br><br>Since digital payments are currently unavailable, please try again during office hours.</p>
-            <button @click="showOfficeHoursError = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-all">
-                Understood
-            </button>
+            <button @click="showOfficeHoursError = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-all">Understood</button>
         </div>
     </div>
 
     <nav class="absolute top-0 left-0 w-full p-6 lg:px-12 flex items-center justify-between z-20">
         <div class="flex items-center">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-4 shadow-lg shadow-brand-blue/30">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
-            <div>
-                <h1 class="text-xl font-black tracking-tight text-brand-dark leading-none">SKILLS Gym</h1>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Facility Rentals</p>
-            </div>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-4 shadow-lg shadow-brand-blue/30"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+            <div><h1 class="text-xl font-black tracking-tight text-brand-dark leading-none">SKILLS Gym</h1><p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Facility Rentals</p></div>
         </div>
     </nav>
 
     <div class="min-h-screen flex items-center justify-center p-6 pt-28 lg:pt-6 lg:p-12 relative">
-        
-        <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;">
-            <div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center">
-                <svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span>
-            </div>
-        </div>
+        <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;"><div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center"><svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span></div></div>
 
         <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-8 lg:gap-16 xl:gap-20 items-center">
             
-            <div class="w-full lg:w-5/12 relative h-[550px] lg:h-[650px] order-1 lg:order-1">
+            <div class="w-full lg:w-5/12 relative h-[600px] lg:h-[700px] order-1 lg:order-1">
                 
                 <div x-show="currentView === 'welcome'" x-transition.opacity class="absolute inset-0 flex flex-col justify-center text-center lg:text-left">
                     <h1 class="text-5xl lg:text-6xl font-black text-brand-dark tracking-tight mb-4 leading-tight">Welcome to <br>SKILLS Gym</h1>
                     <p class="text-lg text-slate-500 font-medium mb-12">Select an option or click an available slot on the calendar to begin.</p>
-                    
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full h-48">
-                        <button @click="initiateBooking('Regular')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 group">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-soft text-brand-blue flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                            </div>
-                            <h3 class="text-lg font-black text-brand-dark mb-1">Regular Court</h3>
-                            <p class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">(Max 20 pax)</p>
-                        </button>
-                        <button @click="initiateBooking('Special')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 group">
-                            <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm border border-amber-100">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                            </div>
-                            <h3 class="text-lg font-black text-brand-dark mb-1">Special Event</h3>
-                            <p class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">(Intramurals, Liga)</p>
-                        </button>
+                        <button @click="initiateBooking('Regular')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 group"><div class="w-14 h-14 rounded-2xl bg-brand-soft text-brand-blue flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg></div><h3 class="text-lg font-black text-brand-dark mb-1">Regular Court</h3><p class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">(Max 20 pax)</p></button>
+                        <button @click="initiateBooking('Special')" class="bg-white/95 backdrop-blur-md rounded-[2rem] shadow-saas hover:shadow-floating border border-white p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 group"><div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm border border-amber-100"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg></div><h3 class="text-lg font-black text-brand-dark mb-1">Special Event</h3><p class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">(Intramurals, Liga)</p></button>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'terms'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
-                        <div>
-                            <h3 class="text-xl font-black text-brand-dark leading-tight">Terms & Waiver</h3>
-                            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Please review before proceeding</p>
-                        </div>
-                        <button @click="goBackToWelcome()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg> Cancel
-                        </button>
+                        <div><h3 class="text-xl font-black text-brand-dark leading-tight">Terms & Waiver</h3><p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Please review before proceeding</p></div>
+                        <button @click="goBackToWelcome()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors"><svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg> Cancel</button>
                     </div>
-                    
                     <div class="flex-1 overflow-y-auto pr-3 text-sm text-slate-600 space-y-5 hide-scroll">
-                        <div>
-                            <h4 class="font-bold text-brand-dark mb-1">I. Reservation & Payment Terms</h4>
-                            <ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500">
-                                <li><strong>Lead Time:</strong> Reservations require at least seven (7) working days' notice for large events/tournaments, and one (1) working day for regular games.</li>
-                                <li><strong>Payment:</strong> Regular games require full payment to secure a slot. Large events require a 50% non-refundable downpayment to reserve the date.</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-brand-dark mb-1">II. Cancellation & Rescheduling</h4>
-                            <p class="text-xs text-slate-500 mb-2 leading-relaxed">Rescheduling requests are subject to the following administrative fees based on the total booking amount:</p>
-                            <ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500">
-                                <li><strong>7+ days notice:</strong> 20% Fee</li>
-                                <li><strong>1–3 days notice:</strong> 30% Fee</li>
-                                <li><strong>Same-day notice:</strong> 50% Fee</li>
-                                <li><strong>Force Majeure:</strong> In cases of typhoons, flooding, or government-mandated suspensions, bookings may be rescheduled or fully refunded without penalty.</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-brand-dark mb-1">III. Facility Waiver & Release of Liability</h4>
-                            <p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">By proceeding, I declare that I am of legal age and am voluntarily requesting permission to use the Gymnasium facilities of SKILLS Inc. I am fully aware of the inherent risks involved in physical exercise and sports, including physical injury, accidents, or medical complications.</p>
-                            <p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">I voluntarily assume full responsibility for any risk of loss, property damage, or personal injury I may sustain. I hereby release, waive, discharge, and covenant not to sue SKILLS Inc. from any liability whatsoever for incidents occurring within the premises.</p>
-                            <p class="text-xs text-slate-500 leading-relaxed text-justify">Furthermore, I agree to maintain proper decorum. I acknowledge that involvement in any commotion, fight, or disturbance grants management the right to immediately expel me and revoke access privileges. This digital agreement shall bind my family and spouse as a complete release of liability under the laws of the Philippines.</p>
-                        </div>
+                        <div><h4 class="font-bold text-brand-dark mb-1">I. Reservation & Payment Terms</h4><ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500"><li><strong>Lead Time:</strong> Reservations require at least seven (7) working days' notice for large events, and one (1) working day for regular games.</li><li><strong>Payment:</strong> Regular games require full payment to secure a slot. Large events require a 50% non-refundable downpayment.</li></ul></div>
+                        <div><h4 class="font-bold text-brand-dark mb-1">II. Cancellation & Rescheduling</h4><p class="text-xs text-slate-500 mb-2 leading-relaxed">Rescheduling requests are subject to the following administrative fees:</p><ul class="list-disc pl-4 space-y-1 text-xs leading-relaxed text-slate-500"><li><strong>7+ days notice:</strong> 20% Fee</li><li><strong>1–3 days notice:</strong> 30% Fee</li><li><strong>Same-day notice:</strong> 50% Fee</li><li><strong>Force Majeure:</strong> In cases of typhoons, flooding, or government-mandated suspensions, bookings may be rescheduled or refunded without penalty.</li></ul></div>
+                        <div><h4 class="font-bold text-brand-dark mb-1">III. Facility Waiver & Release of Liability</h4><p class="text-xs text-slate-500 leading-relaxed text-justify mb-2">By proceeding, I declare that I am of legal age and am voluntarily requesting permission to use the Gymnasium facilities of SKILLS Inc. I am fully aware of the inherent risks involved in physical exercise and sports.</p><p class="text-xs text-slate-500 leading-relaxed text-justify">I acknowledge that involvement in any commotion, fight, or disturbance grants management the right to immediately expel me and revoke access privileges. This digital agreement shall bind my family and spouse under the laws of the Philippines.</p></div>
                     </div>
-
                     <div class="shrink-0 mt-4 pt-4 border-t border-slate-100">
                         <label class="flex items-start cursor-pointer group mb-5">
-                            <div class="relative flex items-center justify-center mr-3 mt-0.5">
-                                <input type="checkbox" x-model="acceptedTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-brand-blue checked:border-brand-blue transition-all cursor-pointer">
-                                <svg class="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                            </div>
-                            <span class="text-xs font-bold text-slate-700 group-hover:text-brand-dark leading-snug">I have read and agree to the Terms & Conditions and the Waiver of Liability.</span>
+                            <div class="relative flex items-center justify-center mr-3 mt-0.5"><input type="checkbox" x-model="acceptedTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-brand-blue checked:border-brand-blue transition-all cursor-pointer"><svg class="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div>
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-brand-dark leading-snug">I have read and agree to the Terms & Conditions and Waiver of Liability.</span>
                         </label>
-                        <button @click="proceedToForm()" :disabled="!acceptedTerms" class="w-full font-bold py-4 rounded-xl transition-all text-sm tracking-wide shadow-sm flex justify-center items-center" :class="acceptedTerms ? 'bg-brand-dark hover:bg-black text-white shadow-floating cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
-                            Proceed to Reservation Details <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                        </button>
+                        <button @click="proceedToForm()" :disabled="!acceptedTerms" class="w-full font-bold py-4 rounded-xl transition-all text-sm tracking-wide shadow-sm flex justify-center items-center" :class="acceptedTerms ? 'bg-brand-dark hover:bg-black text-white shadow-floating cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'">Proceed to Reservation Details <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'booking-form'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-6 md:p-8 flex flex-col overflow-hidden">
-                    <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 shrink-0">
-                        <div>
-                            <h3 class="text-xl font-black text-brand-dark leading-tight" x-text="bookingCategory === 'Regular' ? 'Regular Booking' : 'Event Booking'"></h3>
-                            <p class="text-xs text-slate-500 font-medium mt-0.5" x-text="currentDate"></p>
-                        </div>
-                        <button @click="goBackToTerms()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg> Back
-                        </button>
+                    <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
+                        <div><h3 class="text-xl font-black text-brand-dark leading-tight" x-text="bookingCategory === 'Regular' ? 'Regular Booking' : 'Event Booking'"></h3></div>
+                        <button @click="goBackToTerms()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-colors"><svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg> Back</button>
                     </div>
                     
                     <div class="space-y-4 flex-1 overflow-y-auto pr-2 pb-2 hide-scroll">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label class="form-label">Full Name *</label><input type="text" class="form-input bg-slate-50" :class="errors.fullName ? '!border-red-400 bg-red-50' : ''" placeholder="Juan Dela Cruz" x-model="form.fullName"></div>
-                            <div><label class="form-label">Organization</label><input type="text" class="form-input bg-slate-50" placeholder="Optional" x-model="form.organization"></div>
+                            <div><label class="form-label">Contact Number *</label><input type="tel" class="form-input bg-slate-50" :class="errors.contactNumber ? '!border-red-400 bg-red-50' : ''" placeholder="09XX XXX XXXX" x-model="form.contactNumber"></div>
                         </div>
                         <div><label class="form-label">Email Address *</label><input type="email" class="form-input bg-slate-50" :class="errors.email ? '!border-red-400 bg-red-50' : ''" placeholder="customer@domain.com" x-model="form.email"></div>
                         
-                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label class="form-label">Category *</label>
-                                    <select class="form-input bg-white text-sm" x-model="form.sportType" @change="handleSportTypeChange()">
-                                        <template x-for="opt in sportOptions[bookingCategory]" :key="opt">
-                                            <option :value="opt" x-text="opt"></option>
-                                        </template>
-                                    </select>
+                        <div class="border-t border-slate-100 pt-4 mt-2">
+                            <h4 class="text-sm font-black text-brand-dark mb-3">Reservation Schedule</h4>
+                            <template x-for="(slot, index) in form.slots" :key="slot.id">
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 mb-4 relative shadow-sm">
+                                    <button x-show="form.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[9px] font-bold uppercase tracking-widest text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded-md transition-colors">Remove</button>
+                                    
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 mt-1">
+                                        <div class="sm:col-span-2"><label class="form-label">Event Date *</label><input type="date" class="form-input bg-white text-sm" :class="errors.slots[index]?.date ? '!border-red-400 bg-red-50' : ''" x-model="slot.date" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals()"></div>
+                                        <div>
+                                            <label class="form-label">Category *</label>
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.sportType ? '!border-red-400 bg-red-50' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)"><template x-for="opt in sportOptions[bookingCategory]" :key="opt"><option :value="opt" x-text="opt"></option></template></select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Facility *</label>
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.court ? '!border-red-400 bg-red-50' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals()"><template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac"><option :value="fac" x-text="fac"></option></template></select>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="form-label">Start Time *</label>
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeStart ? '!border-red-400 bg-red-50' : ''" x-model="slot.timeStart" @change="calculateTotals(); slot.timeEnd = ''">
+                                                <option value="" disabled>Select...</option>
+                                                <template x-for="time in getAvailableTimeStarts(slot)" :key="time"><option x-text="time"></option></template>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">End Time *</label>
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeEnd ? '!border-red-400 bg-red-50' : ''" x-model="slot.timeEnd" @change="calculateTotals()" :disabled="!slot.timeStart">
+                                                <option value="" disabled>Select...</option>
+                                                <template x-for="time in getAvailableTimeEnds(slot)" :key="time"><option x-text="time"></option></template>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="form-label">Facility *</label>
-                                    <select class="form-input bg-white text-sm" :class="errors.court ? '!border-red-400 bg-red-50' : ''" x-model="form.court" :disabled="!form.sportType">
-                                        <template x-for="fac in getAvailableFacilities(form.sportType)" :key="fac">
-                                            <option :value="fac" x-text="fac"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="form-label">Start Time *</label>
-                                    <select class="form-input bg-white text-sm" :class="errors.timeStart ? '!border-red-400 bg-red-50' : ''" x-model="form.timeStart">
-                                        <option value="" disabled>Select...</option>
-                                        <template x-for="time in timeOptions.slice(0,-1)"><option x-text="time"></option></template>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label">End Time *</label>
-                                    <select class="form-input bg-white text-sm" :class="errors.timeEnd ? '!border-red-400 bg-red-50' : ''" x-model="form.timeEnd">
-                                        <option value="" disabled>Select...</option>
-                                        <template x-for="time in timeOptions.slice(1)"><option x-text="time"></option></template>
-                                    </select>
-                                </div>
-                            </div>
+                            </template>
+                            <button @click="addSlot()" class="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:text-brand-blue hover:border-brand-blue hover:bg-brand-soft transition-colors mb-2">+ Add Another Booking Slot</button>
                         </div>
 
-                        <div class="p-5 bg-brand-soft rounded-2xl border border-blue-50">
+                        <div class="p-5 bg-brand-soft rounded-2xl border border-blue-50 mt-4">
                             <div class="flex justify-between items-center mb-5">
-                                <div>
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Estimated Total</span>
-                                    <span class="text-[9px] text-slate-400">Subject to final admin review</span>
-                                </div>
-                                <span class="text-3xl font-black text-brand-blue" x-text="'₱' + estimatedTotal"></span>
+                                <div><span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Grand Total</span><span class="text-[9px] text-slate-400">Subject to review</span></div>
+                                <span class="text-3xl font-black text-brand-blue" x-text="'₱' + form.grandTotal"></span>
                             </div>
-                            
                             <label class="form-label mb-3">Payment Method</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                
                                 <label class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-colors" :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-sm ring-1 ring-brand-blue/20' : 'border-slate-200 bg-white hover:bg-slate-50'">
                                     <input type="radio" x-model="form.paymentMode" value="Cash" class="hidden">
                                     <span class="font-bold text-sm text-brand-dark">Cash</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Pay at Cashier</span>
                                 </label>
-                                
-                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
-                                    <input type="radio" disabled class="hidden">
+                                <div class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
                                     <span class="font-bold text-sm text-slate-500">GCash</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
-                                </label>
-                                
-                                <label class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
-                                    <input type="radio" disabled class="hidden">
+                                </div>
+                                <div class="relative flex flex-col p-4 border border-slate-200 bg-slate-100 rounded-xl cursor-not-allowed opacity-60" title="This mode of payment will be available soon.">
                                     <span class="font-bold text-sm text-slate-500">Bank Transfer</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
-                                </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <button @click="submitRequest()" class="w-full mt-4 bg-brand-dark hover:bg-black text-white font-bold py-4 rounded-xl shadow-floating transition-all shrink-0 text-sm tracking-wide">
-                        Submit Request for Approval
-                    </button>
+                    <button @click="submitRequest()" class="w-full mt-4 bg-brand-dark hover:bg-black text-white font-bold py-4 rounded-xl shadow-floating transition-all shrink-0 text-sm tracking-wide">Submit Request for Approval</button>
                 </div>
 
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
-                    <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
+                    <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div>
                     <h2 class="text-3xl font-black text-brand-dark mb-4">Slot Reserved!</h2>
-                    
-                    <div class="mb-4 w-full">
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Your Tracking Reference</p>
-                        <div class="bg-white border-2 border-slate-200 rounded-xl px-6 py-4 shadow-sm inline-block w-full max-w-[250px]">
-                            <span class="text-2xl font-mono font-black text-brand-blue tracking-widest" x-text="generatedRefNumber"></span>
-                        </div>
-                    </div>
-
+                    <div class="mb-4 w-full"><p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Your Tracking Reference</p><div class="bg-white border-2 border-slate-200 rounded-xl px-6 py-4 shadow-sm inline-block w-full max-w-[250px]"><span class="text-2xl font-mono font-black text-brand-blue tracking-widest" x-text="generatedRefNumber"></span></div></div>
                     <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl mt-2 mb-8">
-                        <p class="text-amber-800 font-medium text-sm leading-relaxed">
-                            Please present your reference number to the SKILLS Cashier to settle your payment within the next <strong class="font-black text-amber-900">10 hours</strong>. Failure to pay will result in automatic cancellation.
-                        </p>
+                        <p class="text-amber-800 font-medium text-sm leading-relaxed">Please proceed to the SKILLS Cashier to settle your payment within the next <strong class="font-black text-amber-900">10 hours</strong>. Failure to pay will result in automatic cancellation.</p>
                     </div>
-
-                    <button @click="goBackToWelcome(); form.fullName=''" class="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-full hover:bg-slate-200 transition-colors">
-                        Return to Start
-                    </button>
+                    <button @click="goBackToWelcome(); form.fullName=''" class="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-full hover:bg-slate-200 transition-colors">Return to Start</button>
                 </div>
-
             </div>
 
             <div class="w-full lg:w-7/12 flex flex-col order-2 lg:order-2">
-                <div class="flex items-center mb-4">
-                    <div class="bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-white flex items-center gap-3">
-                        <button @click="changeDay(-1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&lt;</button>
-                        <input type="date" class="border-none text-sm font-bold text-brand-dark px-2 h-full text-center outline-none bg-transparent w-36 cursor-pointer" x-model="currentDate">
-                        <button @click="changeDay(1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&gt;</button>
-                    </div>
-                </div>
-
-                <div class="w-full h-[500px] lg:h-[650px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
+                <div class="flex items-center mb-4"><div class="bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-white flex items-center gap-3"><button @click="changeDay(-1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&lt;</button><input type="date" class="border-none text-sm font-bold text-brand-dark px-2 h-full text-center outline-none bg-transparent w-36 cursor-pointer" x-model="currentDate"><button @click="changeDay(1)" class="p-1.5 text-slate-400 hover:text-brand-dark transition-colors font-bold">&gt;</button></div></div>
+                <div class="w-full h-[600px] lg:h-[700px] bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white overflow-hidden flex flex-col transition-all duration-300">
                     <div class="overflow-y-auto overflow-x-auto flex-1 hide-scroll">
                         <div class="min-w-[500px]">
-                            <div class="grid grid-cols-[115px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
-                                <div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 2</div>
-                                <div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div>
-                            </div>
-                            
+                            <div class="grid grid-cols-[115px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10"><div class="p-3 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">Time Block</div><div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 1</div><div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 2</div><div class="p-3 text-center font-bold text-brand-dark text-xs border-l border-slate-200/50">Court 3</div></div>
                             <template x-for="block in timeBlocks" :key="block.start">
                                 <div class="grid grid-cols-[115px_1fr_1fr_1fr] border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors">
                                     <div class="p-2 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center whitespace-nowrap" x-text="block.label"></div>
-                                    
                                     <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                         <div class="p-1.5 border-l border-slate-100 h-16 relative">
-                                            <template x-if="getBookingData(block, court).booked">
-                                                <div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner">
-                                                    <span class="text-[9px] font-black uppercase tracking-widest">Reserved</span>
-                                                </div>
-                                            </template>
-                                            <template x-if="!getBookingData(block, court).booked">
-                                                <div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group">
-                                                    <span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span>
-                                                    <span class="absolute opacity-100 group-hover:opacity-0 transition-opacity tracking-wide">Available</span>
-                                                </div>
-                                            </template>
+                                            <template x-if="getBookingData(block, court).booked"><div class="w-full h-full rounded-xl bg-slate-100 text-slate-400 flex flex-col items-center justify-center cursor-not-allowed border border-slate-200/50 opacity-80 shadow-inner"><span class="text-[9px] font-black uppercase tracking-widest">Reserved</span></div></template>
+                                            <template x-if="!getBookingData(block, court).booked"><div @click="fastBookSlot(court, block)" class="w-full h-full rounded-xl border-2 border-dashed border-emerald-200 flex items-center justify-center text-emerald-500 font-bold text-[10px] bg-emerald-50/30 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer shadow-sm group"><span class="opacity-0 group-hover:opacity-100 transition-opacity">Book Slot</span><span class="absolute opacity-100 group-hover:opacity-0 transition-opacity tracking-wide">Available</span></div></template>
                                         </div>
                                     </template>
                                 </div>
