@@ -79,8 +79,7 @@
                                 const s = this.parseTimeInt(b.timeStart); const e = this.parseTimeInt(b.timeEnd);
                                 if (h >= s && h < e) return false;
                             }
-                        }
-                        return true;
+                        } return true;
                     });
                 },
                 getAvailableTimeEnds(slot) {
@@ -131,21 +130,29 @@
                 },
 
                 validateForm() {
-                    this.errors = { fullName: false, email: false, contactNumber: false, paymentReference: false, paymentMode: false, slots: [] }; let isValid = true;
-                    if(!this.form.fullName) { this.errors.fullName = true; isValid = false; }
-                    if(!this.form.email) { this.errors.email = true; isValid = false; }
-                    if(!this.form.contactNumber) { this.errors.contactNumber = true; isValid = false; }
-                    if(!this.form.paymentMode) { this.errors.paymentMode = true; isValid = false; }
-                    if(this.form.paymentMode === 'GCash' && !this.form.paymentReference) { this.errors.paymentReference = true; isValid = false; }
+                    this.errors = { fullName: false, email: false, contactNumber: false, paymentReference: false, paymentMode: false, mainFormError: false, slots: [] }; 
+                    let isValid = true; let mainFormError = false;
+                    
+                    if(!this.form.fullName) { this.errors.fullName = true; isValid = false; mainFormError = true; }
+                    if(!this.form.email) { this.errors.email = true; isValid = false; mainFormError = true; }
+                    if(!this.form.contactNumber) { this.errors.contactNumber = true; isValid = false; mainFormError = true; }
+                    if(!this.form.paymentMode) { this.errors.paymentMode = true; isValid = false; mainFormError = true; }
+                    
+                    if(this.form.paymentMode === 'GCash' && (!this.form.paymentReference || this.form.paymentReference.trim() === '')) { 
+                        this.errors.paymentReference = true; 
+                        isValid = false; 
+                    }
                     
                     this.form.slots.forEach((slot, index) => {
                         let slotErr = {};
-                        if(!slot.date) { slotErr.date = true; isValid = false; }
-                        if(!slot.court) { slotErr.court = true; isValid = false; }
-                        if(!slot.timeStart) { slotErr.timeStart = true; isValid = false; }
-                        if(!slot.timeEnd) { slotErr.timeEnd = true; isValid = false; }
+                        if(!slot.date) { slotErr.date = true; isValid = false; mainFormError = true; }
+                        if(!slot.court) { slotErr.court = true; isValid = false; mainFormError = true; }
+                        if(!slot.timeStart) { slotErr.timeStart = true; isValid = false; mainFormError = true; }
+                        if(!slot.timeEnd) { slotErr.timeEnd = true; isValid = false; mainFormError = true; }
                         this.errors.slots[index] = slotErr;
                     });
+                    
+                    this.errors.mainFormError = mainFormError;
                     return isValid;
                 },
 
@@ -171,13 +178,31 @@
                     this.form.grandTotal = totalAmount.toFixed(2);
                 },
 
-                async submitRequest() {
+                // ==== NEW MODAL SUBMISSION LOGIC ====
+                submitFromModal() {
                     if(!this.validateForm()) {
-                         if (this.errors.paymentMode) alert("Please select a payment method to proceed.");
-                         return;
+                        // If the main form (name, email, schedule) is missing data, close modal and alert
+                        if(this.errors.mainFormError) {
+                            this.showCashModal = false;
+                            this.showGcashModal = false;
+                            setTimeout(() => alert("Please complete your Client Information and Schedule details highlighted in red before proceeding to payment."), 100);
+                        }
+                        // If ONLY the GCash ref is missing, the GCash modal stays open so they can type it in.
+                        return; 
                     }
-                    if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) { this.showOfficeHoursError = true; return; }
                     
+                    if (this.form.paymentMode === 'Cash' && !this.checkOfficeHours()) { 
+                        this.showCashModal = false;
+                        this.showOfficeHoursError = true; 
+                        return; 
+                    }
+                    
+                    this.showCashModal = false;
+                    this.showGcashModal = false;
+                    this.executeSubmission();
+                },
+
+                async executeSubmission() {
                     this.isLoading = true;
                     this.generatedRefNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
                     
@@ -200,33 +225,41 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased ambient-gradient min-h-screen selection:bg-brand-blue/20 selection:text-brand-blue" x-data="customerApp">
 
-    <!-- CASH PAYMENT MODAL -->
+    <!-- CASH PAYMENT MODAL WITH EMBEDDED SUBMIT -->
     <div x-show="showCashModal" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" x-transition.opacity @click="showCashModal = false"></div>
         <div class="bg-white rounded-3xl shadow-2xl z-[110] max-w-sm w-full p-8 transform transition-all text-center border border-slate-100" x-transition.scale>
-            <div class="w-16 h-16 bg-brand-soft text-brand-blue rounded-full flex items-center justify-center mb-5 mx-auto border border-blue-100"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+            <button @click="showCashModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-full transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <div class="w-16 h-16 bg-brand-soft text-brand-blue rounded-full flex items-center justify-center mb-5 mx-auto border border-blue-100 shadow-sm"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
             <h3 class="text-xl font-black text-brand-dark mb-3">Cash Payment</h3>
-            <p class="text-slate-600 text-sm leading-relaxed mb-6 font-medium">Please pay at the <strong>SKILLS Cashier</strong> located at the General Maxilom, Old Sacred Heart Campus.</p>
-            <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-6"><p class="text-amber-700 text-xs font-bold uppercase tracking-wide">Note: The waiting time is up to 10 hours.</p></div>
-            <button @click="showCashModal = false" class="w-full bg-brand-dark hover:bg-black text-white font-bold py-3.5 rounded-xl transition-all shadow-md">Acknowledge</button>
+            <p class="text-slate-600 text-sm leading-relaxed mb-6 font-medium">Please pay at the <strong class="text-brand-dark">SKILLS Cashier</strong> located at the General Maxilom, Old Sacred Heart Campus.</p>
+            <div class="bg-amber-50 border border-amber-100 rounded-xl p-3.5 mb-6 shadow-inner"><p class="text-amber-700 text-xs font-bold uppercase tracking-wide">Note: The waiting time is up to 10 hours.</p></div>
+            <button @click="submitFromModal()" class="w-full bg-brand-dark hover:bg-black text-white font-bold py-4 rounded-xl transition-all shadow-md tracking-wide">Reserve Slot</button>
         </div>
     </div>
 
-    <!-- GCASH PAYMENT MODAL -->
+    <!-- GCASH PAYMENT MODAL WITH EMBEDDED SUBMIT -->
     <div x-show="showGcashModal" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" x-transition.opacity @click="showGcashModal = false"></div>
         <div class="bg-white rounded-3xl shadow-2xl z-[110] max-w-md w-full p-8 transform transition-all text-center border border-slate-100" x-transition.scale>
+            <button @click="showGcashModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-full transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             <h3 class="text-2xl font-black text-brand-dark mb-1">GCash Payment</h3>
             <p class="text-slate-500 text-xs mb-6 font-medium">Please pay through this QR code and submit your reference number below.</p>
-            <div class="bg-white p-4 rounded-3xl border-2 border-slate-100 shadow-sm inline-block mb-3"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" class="w-40 h-40 mx-auto mix-blend-multiply opacity-90" alt="SKILLS GYM QR Code"></div>
+            <div class="bg-white p-3 rounded-3xl border-2 border-slate-100 shadow-sm inline-block mb-3"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" class="w-36 h-36 mx-auto mix-blend-multiply opacity-90" alt="SKILLS GYM QR Code"></div>
             <p class="font-black text-lg text-brand-dark tracking-tight mb-5">SKILLS Gym Rental</p>
             
-            <div class="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-xs text-left leading-relaxed shadow-inner">
+            <div class="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-xs text-left leading-relaxed shadow-inner mb-6">
                 <p class="text-slate-700 font-medium mb-2">For confirmation and verification, please call <strong class="text-brand-dark">0967 826 5401</strong> or send your receipt to our Facebook page:</p>
                 <a href="https://www.facebook.com/profile.php?id=61586049874681" target="_blank" class="text-brand-blue font-bold break-all hover:underline flex items-center"><svg class="w-4 h-4 mr-1.5 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>SKILLS Official Page</a>
             </div>
+
+            <div class="text-left mb-6 relative">
+                <label class="form-label text-blue-700">GCash Reference Number <span class="text-red-500">*</span></label>
+                <input type="text" class="form-input bg-slate-50 font-mono tracking-wider font-bold text-blue-900 border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 shadow-inner" :class="errors.paymentReference ? '!border-red-500 !bg-red-50 ring-2 ring-red-500/20' : ''" placeholder="13-digit Reference No." x-model="form.paymentReference" @input="errors.paymentReference = false">
+                <p x-show="errors.paymentReference" class="text-[10px] font-bold text-red-500 mt-1.5 absolute">Reference number is required to proceed.</p>
+            </div>
             
-            <button @click="showGcashModal = false" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-bold py-3.5 rounded-xl mt-6 shadow-floating transition-all">I Understand</button>
+            <button @click="submitFromModal()" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-bold py-4 rounded-xl shadow-floating transition-all tracking-wide mt-2">Pay & Reserve</button>
         </div>
     </div>
 
@@ -291,10 +324,10 @@
                     
                     <div class="space-y-4 flex-1 overflow-y-auto pr-2 pb-2 hide-scroll">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="form-label">Full Name *</label><input type="text" class="form-input bg-slate-50" :class="errors.fullName ? '!border-red-400 bg-red-50' : ''" placeholder="Juan Dela Cruz" x-model="form.fullName"></div>
-                            <div><label class="form-label">Contact Number *</label><input type="tel" class="form-input bg-slate-50" :class="errors.contactNumber ? '!border-red-400 bg-red-50' : ''" placeholder="09XX XXX XXXX" x-model="form.contactNumber"></div>
+                            <div><label class="form-label">Full Name *</label><input type="text" class="form-input bg-slate-50" :class="errors.fullName ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" placeholder="Juan Dela Cruz" x-model="form.fullName" @input="errors.fullName = false"></div>
+                            <div><label class="form-label">Contact Number *</label><input type="tel" class="form-input bg-slate-50" :class="errors.contactNumber ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" placeholder="09XX XXX XXXX" x-model="form.contactNumber" @input="errors.contactNumber = false"></div>
                         </div>
-                        <div><label class="form-label">Email Address *</label><input type="email" class="form-input bg-slate-50" :class="errors.email ? '!border-red-400 bg-red-50' : ''" placeholder="customer@domain.com" x-model="form.email"></div>
+                        <div><label class="form-label">Email Address *</label><input type="email" class="form-input bg-slate-50" :class="errors.email ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" placeholder="customer@domain.com" x-model="form.email" @input="errors.email = false"></div>
                         
                         <div class="border-t border-slate-100 pt-4 mt-2">
                             <h4 class="text-sm font-black text-brand-dark mb-3">Reservation Schedule</h4>
@@ -303,27 +336,27 @@
                                     <button x-show="form.slots.length > 1" @click="removeSlot(index)" class="absolute top-4 right-4 text-[9px] font-bold uppercase tracking-widest text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded-md transition-colors">Remove</button>
                                     
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 mt-1">
-                                        <div class="sm:col-span-2"><label class="form-label">Event Date *</label><input type="date" class="form-input bg-white text-sm" :class="errors.slots[index]?.date ? '!border-red-400 bg-red-50' : ''" x-model="slot.date" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals()"></div>
+                                        <div class="sm:col-span-2"><label class="form-label">Event Date *</label><input type="date" class="form-input bg-white text-sm" :class="errors.slots[index]?.date ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" x-model="slot.date" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals(); if(errors.slots[index]) errors.slots[index].date = false"></div>
                                         <div>
                                             <label class="form-label">Category *</label>
-                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.sportType ? '!border-red-400 bg-red-50' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)"><template x-for="opt in sportOptions[bookingCategory]" :key="opt"><option :value="opt" x-text="opt"></option></template></select>
+                                            <select class="form-input bg-white text-sm" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)"><template x-for="opt in sportOptions[bookingCategory]" :key="opt"><option :value="opt" x-text="opt"></option></template></select>
                                         </div>
                                         <div>
                                             <label class="form-label">Facility *</label>
-                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.court ? '!border-red-400 bg-red-50' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals()"><template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac"><option :value="fac" x-text="fac"></option></template></select>
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.court ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="slot.timeStart = ''; slot.timeEnd = ''; calculateTotals(); if(errors.slots[index]) errors.slots[index].court = false"><template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac"><option :value="fac" x-text="fac"></option></template></select>
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="form-label">Start Time *</label>
-                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeStart ? '!border-red-400 bg-red-50' : ''" x-model="slot.timeStart" @change="calculateTotals(); slot.timeEnd = ''">
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeStart ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" x-model="slot.timeStart" @change="calculateTotals(); slot.timeEnd = ''; if(errors.slots[index]) errors.slots[index].timeStart = false">
                                                 <option value="" disabled>Select...</option>
                                                 <template x-for="time in getAvailableTimeStarts(slot)" :key="time"><option x-text="time"></option></template>
                                             </select>
                                         </div>
                                         <div>
                                             <label class="form-label">End Time *</label>
-                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeEnd ? '!border-red-400 bg-red-50' : ''" x-model="slot.timeEnd" @change="calculateTotals()" :disabled="!slot.timeStart">
+                                            <select class="form-input bg-white text-sm" :class="errors.slots[index]?.timeEnd ? '!border-red-400 bg-red-50 ring-2 ring-red-400/20' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false" :disabled="!slot.timeStart">
                                                 <option value="" disabled>Select...</option>
                                                 <template x-for="time in getAvailableTimeEnds(slot)" :key="time"><option x-text="time"></option></template>
                                             </select>
@@ -339,13 +372,15 @@
                                 <div><span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Grand Total</span><span class="text-[9px] text-slate-400">Subject to review</span></div>
                                 <span class="text-3xl font-black text-brand-blue" x-text="'₱' + form.grandTotal"></span>
                             </div>
-                            <label class="form-label mb-3">Payment Method <span class="text-red-500">*</span></label>
+                            <label class="form-label mb-3">Select Payment Method to Finalize <span class="text-red-500">*</span></label>
+                            
+                            <!-- Payment Selection acts as submission trigger -->
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <label @click="selectPayment('Cash')" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all" :class="form.paymentMode === 'Cash' ? 'border-brand-blue bg-white shadow-md ring-1 ring-brand-blue/20 scale-[1.02]' : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'">
+                                <label @click="selectPayment('Cash')" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all border-slate-200 bg-white hover:bg-slate-50 hover:border-brand-blue hover:shadow-md">
                                     <span class="font-bold text-sm text-brand-dark">Cash</span>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Pay at Cashier</span>
                                 </label>
-                                <label @click="selectPayment('GCash')" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all" :class="form.paymentMode === 'GCash' ? 'border-blue-500 bg-blue-50 shadow-md ring-1 ring-blue-500/20 scale-[1.02]' : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'">
+                                <label @click="selectPayment('GCash')" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-500 hover:shadow-md">
                                     <span class="font-bold text-sm text-brand-dark">GCash</span>
                                     <span class="text-[9px] font-bold text-blue-500 uppercase mt-1">Scan QR Code</span>
                                 </label>
@@ -354,14 +389,8 @@
                                     <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Available Soon</span>
                                 </div>
                             </div>
-                            <!-- GCash Reference Input (Only shows if GCash selected) -->
-                            <div x-show="form.paymentMode === 'GCash'" x-transition.opacity class="mt-4 pt-4 border-t border-blue-100">
-                                <label class="form-label text-blue-700">GCash Reference Number <span class="text-red-500">*</span></label>
-                                <input type="text" class="form-input bg-white font-mono tracking-wider font-bold text-blue-900 border-blue-200 focus:border-blue-500 focus:ring-blue-500/20" :class="errors.paymentReference ? '!border-red-400 bg-red-50' : ''" placeholder="13-digit Reference No." x-model="form.paymentReference">
-                            </div>
                         </div>
                     </div>
-                    <button @click="submitRequest()" class="w-full mt-4 bg-brand-dark hover:bg-black text-white font-bold py-4 rounded-xl shadow-floating transition-all shrink-0 text-sm tracking-wide">Submit Request for Approval</button>
                 </div>
 
                 <div x-show="currentView === 'success'" style="display: none;" x-transition.opacity class="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-saas border border-white p-8 flex flex-col items-center justify-center text-center">
@@ -393,13 +422,10 @@
                                     <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
                                         <div class="p-1.5 border-l border-slate-100 h-16 relative">
                                             
-                                            <!-- CALENDAR CELL RENDER LOGIC -->
                                             <template x-if="getBookingData(block, court).booked">
                                                 <div class="w-full h-full rounded-xl flex flex-col items-center justify-center cursor-not-allowed border shadow-inner p-1 transition-all"
                                                      :class="getBookingData(block, court).status === 'Confirmed' ? 'bg-brand-blue/10 border-brand-blue/30 text-brand-blue' : 'bg-slate-100 border-slate-200/50 text-slate-400 opacity-80'">
                                                     <span class="text-[9px] font-black uppercase tracking-widest" x-text="getBookingData(block, court).status"></span>
-                                                    
-                                                    <!-- Only display Reference Number if Admin Confirmed it -->
                                                     <template x-if="getBookingData(block, court).status === 'Confirmed'">
                                                         <span class="text-[8px] font-bold mt-1 tracking-wider px-1.5 py-0.5 bg-brand-blue/20 rounded text-brand-dark" x-text="getBookingData(block, court).ref"></span>
                                                     </template>
