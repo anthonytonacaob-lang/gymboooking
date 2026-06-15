@@ -4,274 +4,168 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal | SKILLS Gym Rental</title>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: { blue: '#2D5DF6', blueHover: '#1B44C8', dark: '#0F172A', soft: '#F3F6FD' }
-                    },
-                    boxShadow: {
-                        'saas': '0 20px 40px -15px rgba(0,0,0,0.03)',
-                        'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.12)',
-                    }
-                }
-            }
-        }
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { blue: '#2D5DF6', blueHover: '#1B44C8', dark: '#0F172A', soft: '#F3F6FD' } }, boxShadow: { 'saas': '0 20px 40px -15px rgba(0,0,0,0.03)', 'floating': '0 30px 60px -12px rgba(45, 93, 246, 0.12)' } } } }
     </script>
-    
     <style type="text/tailwindcss">
         @layer components {
-            .form-input { 
-                @apply w-full rounded-2xl border border-slate-200/80 bg-brand-soft py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:bg-white focus:ring-4 focus:ring-brand-blue/15 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100 font-medium; 
-            }
+            .form-input { @apply w-full rounded-2xl border border-slate-200/80 bg-brand-soft py-3.5 px-5 text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 hover:bg-slate-50 focus:border-brand-blue focus:bg-white focus:ring-4 focus:ring-brand-blue/15 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100 font-medium; }
             .form-label { @apply mb-2.5 block text-xs font-bold uppercase tracking-widest text-slate-500; }
-            select.form-input {
-                @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:cursor-not-allowed;
-                background-position: right 1.25rem center;
-                background-size: 1.2em 1.2em;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            }
+            select.form-input { @apply appearance-none bg-no-repeat pr-10 cursor-pointer disabled:cursor-not-allowed; background-position: right 1.25rem center; background-size: 1.2em 1.2em; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); }
             input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
             input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-            
-            ::-webkit-scrollbar { width: 6px; height: 6px; }
-            ::-webkit-scrollbar-track { background: transparent; }
-            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         }
-
-        .ambient-gradient {
-            background: linear-gradient(135deg, #e4efff 0%, #ffffff 50%, #f0f4f8 100%);
-            background-attachment: fixed;
-        }
-
-        @media print {
-            @page { margin: 0.5cm; size: auto; }
-            body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            #app-wrapper, #toast, .mobile-overlay { display: none !important; }
-            #print-receipt-wrapper { display: block !important; }
-        }
+        .ambient-gradient { background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f8fafc 100%); background-attachment: fixed; }
+        @media print { @page { margin: 0.5cm; size: auto; } body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } #app-wrapper, #toast, .mobile-overlay { display: none !important; } #print-receipt-wrapper { display: block !important; } }
     </style>
-    
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('appData', () => ({
-                sidebarOpen: false,
-                currentView: 'dashboard', 
-                isLoading: false,
-                showReceiptModal: false,
-                currentDate: new Date().toISOString().split('T')[0],
-
+                sidebarOpen: false, currentView: 'dashboard', isLoading: false, showReceiptModal: false, showApprovalPrintModal: false, currentDate: new Date().toISOString().split('T')[0],
                 timeBlocks: [
-                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' },
-                    { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' },
-                    { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' },
-                    { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' },
-                    { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' },
-                    { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' },
-                    { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' },
-                    { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' },
-                    { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' },
-                    { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' },
-                    { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' },
-                    { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' },
-                    { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' },
-                    { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' },
-                    { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
+                    { label: '6:00 AM - 7:00 AM', start: '06:00', end: '07:00', queryTime: '6:00 AM' }, { label: '7:00 AM - 8:00 AM', start: '07:00', end: '08:00', queryTime: '7:00 AM' }, { label: '8:00 AM - 9:00 AM', start: '08:00', end: '09:00', queryTime: '8:00 AM' }, { label: '9:00 AM - 10:00 AM', start: '09:00', end: '10:00', queryTime: '9:00 AM' }, { label: '10:00 AM - 11:00 AM', start: '10:00', end: '11:00', queryTime: '10:00 AM' }, { label: '11:00 AM - 12:00 PM', start: '11:00', end: '12:00', queryTime: '11:00 AM' }, { label: '12:00 PM - 1:00 PM', start: '12:00', end: '13:00', queryTime: '12:00 PM' }, { label: '1:00 PM - 2:00 PM', start: '14:00', end: '15:00', queryTime: '2:00 PM' }, { label: '3:00 PM - 4:00 PM', start: '15:00', end: '16:00', queryTime: '3:00 PM' }, { label: '4:00 PM - 5:00 PM', start: '16:00', end: '17:00', queryTime: '4:00 PM' }, { label: '5:00 PM - 6:00 PM', start: '17:00', end: '18:00', queryTime: '5:00 PM' }, { label: '6:00 PM - 7:00 PM', start: '18:00', end: '19:00', queryTime: '6:00 PM' }, { label: '7:00 PM - 8:00 PM', start: '19:00', end: '20:00', queryTime: '7:00 PM' }, { label: '8:00 PM - 9:00 PM', start: '20:00', end: '21:00', queryTime: '8:00 PM' }, { label: '9:00 PM - 10:00 PM', start: '21:00', end: '22:00', queryTime: '9:00 PM' }
                 ],
-
-                timeOptions: [
-                    '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
-                    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
-                    '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
-                ],
-                
-                facilityMap: {
-                    'Basketball': ['Court 1', 'Court 2', 'Court 3'],
-                    'Volleyball': ['Court 1', 'Court 3'],
-                    'Badminton': ['Court 2'],
-                    'Package A': ['WHOLE GYM'],
-                    'Package B': ['Court 1'],
-                    'Package C': ['ALL 3 COURTS']
-                },
-
-                remarksMap: {
-                    'Basketball': 'Regular Game (Max. 20)',
-                    'Volleyball': 'Regular Game (Max. 20)',
-                    'Badminton': 'Regular Game (Max. 20)',
-                    'Package A': '(Whole Gym (3 courts), Bleachers, Fan, Lights.)',
-                    'Package B': '(Exclusive use of Bleachers, Fan, Lights (Max 80))',
-                    'Package C': '(Pkg C: Fan and Lights (Max 50))'
-                },
+                timeOptions: [ '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM' ],
+                facilityMap: { 'Basketball': ['Court 1', 'Court 2', 'Court 3'], 'Volleyball': ['Court 1', 'Court 3'], 'Badminton': ['Court 2'], 'Package A': ['WHOLE GYM'], 'Package B': ['Court 1'], 'Package C': ['ALL 3 COURTS'] },
+                remarksMap: { 'Basketball': 'Regular Game (Max. 20)', 'Volleyball': 'Regular Game (Max. 20)', 'Badminton': 'Regular Game (Max. 20)', 'Package A': '(Whole Gym (3 courts), Bleachers, Fan, Lights.)', 'Package B': '(Exclusive use of Bleachers, Fan, Lights (Max 80))', 'Package C': '(Pkg C: Fan and Lights (Max 50))' },
 
                 bookingForm: { 
-                    fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
+                    fullName: '', organization: '', email: '', contactNumber: '', address: '', idType: 'National ID', idNumber: '',
                     slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
                     totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', paymentReference: '', additionalCharges: [] 
                 },
-
                 errors: { paymentReference: false, slots: [{}] }, 
-                
-                localBookings: [],
-                masterList: [],
-                lastSavedBooking: null,
+                localBookings: [], masterList: [], lastSavedBooking: null, itemToApprove: null,
                 
                 // =======================================================
                 // ⚠️ CRITICAL: PASTE YOUR APP SCRIPT URL HERE ⚠️
                 // =======================================================
-                scriptURL: 'https://script.google.com/macros/s/AKfycbwiLuLoNAEox-Ij17L1fYqiuG2DWlNG8YYEn-KgJkhOF90IA__g_hK2-qyLcGLT1ZHUlw/exec',
+                scriptURL: 'https://script.google.com/macros/s/AKfycbxwLn3TWsQt5FEnkNG5yzpweqbhn-RZ1PLrgqJbvcMBbEAAuSxCTTFKwR7h2TX4WhCj/exec',
 
                 init() {
                     const cachedBookings = localStorage.getItem('skills_gym_bookings');
                     const cachedMasterList = localStorage.getItem('skills_gym_master_list');
-                    
                     if (cachedBookings) this.localBookings = JSON.parse(cachedBookings);
                     if (cachedMasterList) this.masterList = JSON.parse(cachedMasterList);
-
                     this.loadMasterList();
                 },
 
-                get pendingBookings() {
-                    return this.masterList.filter(item => item.status === 'Pending');
+                get pendingBookings() { return this.masterList.filter(item => item.status === 'Pending'); },
+
+                // ---- NEW APPROVAL WORKFLOW ----
+                initiateApproval(item) {
+                    this.itemToApprove = item;
+                    this.showApprovalPrintModal = true;
                 },
 
-                // LIVE API APPROVAL ENGINE
-                async approveBooking(ref) {
-                    // Update local UI immediately
-                    this.masterList.forEach(item => {
-                        if(item.bookingRef === ref) item.status = 'Confirmed';
-                    });
+                async executeApproval(printReceipt) {
+                    const ref = this.itemToApprove.bookingRef;
+                    this.showApprovalPrintModal = false;
+                    
+                    // Optimistically update UI
+                    this.masterList.forEach(item => { if(item.bookingRef === ref) item.status = 'Confirmed'; });
                     localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
                     this.showToast("Approving booking " + ref + "...", "success");
 
-                    // Send payload to Google Sheets
                     try {
                         const payload = { action: "approve", bookingRef: ref };
-                        await fetch(this.scriptURL, {
-                            method: 'POST',
-                            mode: 'no-cors', 
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(payload)
-                        });
-                        
+                        await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
                         this.showToast("Booking " + ref + " officially confirmed!", "success");
-                        setTimeout(() => { this.loadMasterList(); }, 1500); // Background refresh
-                    } catch (error) {
-                        this.showToast("Error communicating with database.", "error");
-                    }
+                        
+                        if (printReceipt) {
+                            // Construct printable format from item
+                            const now = new Date();
+                            this.lastSavedBooking = {
+                                fullName: this.itemToApprove.fullName, contactNumber: this.itemToApprove.contactNumber, refNumber: ref, printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                                slots: [{ date: this.itemToApprove.date.split(' ')[0], court: this.itemToApprove.facility, sportType: 'Reserved Event', timeStart: this.itemToApprove.timeStart, timeEnd: this.itemToApprove.timeEnd }],
+                                paymentMode: this.itemToApprove.paymentMode, grandTotal: this.itemToApprove.grandTotal
+                            };
+                            setTimeout(() => { window.print(); }, 300);
+                        }
+                        
+                        setTimeout(() => { this.loadMasterList(); }, 1500);
+                    } catch (error) { this.showToast("Error communicating with database.", "error"); }
                 },
+                // -------------------------------
 
                 get metrics() {
                     let cash = 0, gcash = 0, bank = 0, grandTotal = 0;
                     let daysMap = { 'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0 };
-                    let hoursMap = {};
-                    
-                    this.timeBlocks.forEach(b => { hoursMap[b.queryTime] = 0; });
+                    let hoursMap = {}; this.timeBlocks.forEach(b => { hoursMap[b.queryTime] = 0; });
 
                     this.masterList.forEach(item => {
-                        if (item.status === 'Pending') return; // Only count confirmed
-
-                        let amt = parseFloat(item.grandTotal) || 0;
-                        grandTotal += amt;
-                        
+                        if (item.status === 'Pending' || item.status === 'Expired') return; 
+                        let amt = parseFloat(item.grandTotal) || 0; grandTotal += amt;
                         let mode = (item.paymentMode || '').toUpperCase();
-                        if (mode.includes('GCASH')) gcash += amt;
-                        else if (mode.includes('BANK') || mode.includes('TRANSFER')) bank += amt;
-                        else cash += amt;
-
+                        if (mode.includes('GCASH')) gcash += amt; else if (mode.includes('BANK') || mode.includes('TRANSFER')) bank += amt; else cash += amt;
                         if (item.date) {
-                            let cleanDate = item.date.split(' ')[0];
-                            let dateObj = new Date(cleanDate);
-                            if (!isNaN(dateObj.getTime())) {
-                                let dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-                                if (daysMap[dayName] !== undefined) daysMap[dayName]++;
-                            }
+                            let dateObj = new Date(item.date.split(' ')[0]);
+                            if (!isNaN(dateObj.getTime())) { let dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' }); if (daysMap[dayName] !== undefined) daysMap[dayName]++; }
                         }
-
-                        if (item.timeStart) {
-                            let tStart = item.timeStart;
-                            if (hoursMap[tStart] !== undefined) hoursMap[tStart]++;
-                        }
+                        if (item.timeStart && hoursMap[item.timeStart] !== undefined) hoursMap[item.timeStart]++;
                     });
 
-                    let peakDay = Object.keys(daysMap).reduce((a, b) => daysMap[a] > daysMap[b] ? a : b, 'Monday');
-                    if(daysMap[peakDay] === 0) peakDay = "No bookings yet";
-
-                    let peakHour = Object.keys(hoursMap).reduce((a, b) => hoursMap[a] > hoursMap[b] ? a : b, '6:00 AM');
-                    if(hoursMap[peakHour] === 0) peakHour = "No bookings yet";
-
-                    let maxDayValue = Math.max(...Object.values(daysMap), 1);
-                    let maxHourValue = Math.max(...Object.values(hoursMap), 1);
-
-                    return {
-                        cash: cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                        gcash: gcash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                        bank: bank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                        grandTotal: grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                        peakDay: peakDay,
-                        peakHour: peakHour,
-                        daysData: daysMap,
-                        hoursData: hoursMap,
-                        maxDayValue: maxDayValue,
-                        maxHourValue: maxHourValue
-                    };
+                    let peakDay = Object.keys(daysMap).reduce((a, b) => daysMap[a] > daysMap[b] ? a : b, 'Monday'); if(daysMap[peakDay] === 0) peakDay = "No bookings yet";
+                    let peakHour = Object.keys(hoursMap).reduce((a, b) => hoursMap[a] > hoursMap[b] ? a : b, '6:00 AM'); if(hoursMap[peakHour] === 0) peakHour = "No bookings yet";
+                    return { cash: cash.toLocaleString('en-US', { minimumFractionDigits: 2 }), gcash: gcash.toLocaleString('en-US', { minimumFractionDigits: 2 }), bank: bank.toLocaleString('en-US', { minimumFractionDigits: 2 }), grandTotal: grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }), peakDay: peakDay, peakHour: peakHour, daysData: daysMap, hoursData: hoursMap, maxDayValue: Math.max(...Object.values(daysMap), 1), maxHourValue: Math.max(...Object.values(hoursMap), 1) };
                 },
 
                 parseTimeInt(timeStr) {
-                    if(!timeStr) return 0;
-                    const [time, modifier] = timeStr.split(' ');
-                    let hours = parseInt(time.split(':')[0], 10);
-                    if (hours === 12 && modifier === 'AM') hours = 0;
-                    if (hours < 12 && modifier === 'PM') hours += 12;
-                    return hours;
+                    if(!timeStr) return 0; const [time, modifier] = timeStr.split(' '); let hours = parseInt(time.split(':')[0], 10);
+                    if (hours === 12 && modifier === 'AM') hours = 0; if (hours < 12 && modifier === 'PM') hours += 12; return hours;
                 },
 
                 getAvailableFacilities(sport) { return sport ? this.facilityMap[sport] : []; },
-
-                handleSportTypeChange(slot, index) {
-                    slot.court = ''; 
-                    if (this.errors.slots[index]) this.errors.slots[index].sportType = false;
-                    slot.remarks = this.remarksMap[slot.sportType] || '';
-                    this.calculateTotals();
+                handleSportTypeChange(slot, index) { slot.court = ''; if (this.errors.slots[index]) this.errors.slots[index].sportType = false; slot.remarks = this.remarksMap[slot.sportType] || ''; this.calculateTotals(); },
+                
+                getAvailableTimeStarts(slot) {
+                    if (!slot.date || !slot.court) return this.timeOptions.slice(0,-1);
+                    return this.timeOptions.slice(0, -1).filter(time => {
+                        const h = this.parseTimeInt(time);
+                        for (let b of this.localBookings) {
+                            if (b.date === slot.date && (b.court === slot.court || b.court.includes('WHOLE') || slot.court.includes('WHOLE') || b.court.includes('ALL') || slot.court.includes('ALL'))) {
+                                const s = this.parseTimeInt(b.timeStart); const e = this.parseTimeInt(b.timeEnd);
+                                if (h >= s && h < e) return false;
+                            }
+                        }
+                        return true;
+                    });
+                },
+                getAvailableTimeEnds(slot) {
+                    if (!slot.date || !slot.court || !slot.timeStart) return [];
+                    const startH = this.parseTimeInt(slot.timeStart);
+                    return this.timeOptions.slice(1).filter(time => {
+                        const h = this.parseTimeInt(time);
+                        if (h <= startH) return false;
+                        for (let b of this.localBookings) {
+                            if (b.date === slot.date && (b.court === slot.court || b.court.includes('WHOLE') || slot.court.includes('WHOLE') || b.court.includes('ALL') || slot.court.includes('ALL'))) {
+                                const s = this.parseTimeInt(b.timeStart); const e = this.parseTimeInt(b.timeEnd);
+                                if (s < h && e > startH) return false; 
+                            }
+                        }
+                        return true;
+                    });
                 },
 
-                addSlot() {
-                    this.bookingForm.slots.push({ id: Date.now() + Math.random(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' });
-                    this.errors.slots.push({}); 
-                },
-                removeSlot(index) {
-                    if (this.bookingForm.slots.length > 1) {
-                        this.bookingForm.slots.splice(index, 1);
-                        this.errors.slots.splice(index, 1);
-                        this.calculateTotals(); 
-                    }
-                },
-
+                addSlot() { this.bookingForm.slots.push({ id: Date.now() + Math.random(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' }); this.errors.slots.push({}); },
+                removeSlot(index) { if (this.bookingForm.slots.length > 1) { this.bookingForm.slots.splice(index, 1); this.errors.slots.splice(index, 1); this.calculateTotals(); } },
                 addCharge() { this.bookingForm.additionalCharges.push({ description: '', amount: '' }); },
                 removeCharge(index) { this.bookingForm.additionalCharges.splice(index, 1); this.calculateTotals(); },
 
                 validateForm() {
-                    this.errors = { fullName: false, email: false, paymentReference: false, slots: [] }; 
-                    let errorCount = 0;
-                    let conflictError = null;
+                    this.errors = { fullName: false, email: false, contactNumber: false, paymentReference: false, slots: [] }; 
+                    let errorCount = 0; let conflictError = null;
 
                     if (!this.bookingForm.fullName) { this.errors.fullName = true; errorCount++; }
-                    if (!this.bookingForm.email) { this.errors.email = true; errorCount++; }
-
-                    if (this.bookingForm.paymentMode !== 'Cash' && !this.bookingForm.paymentReference.trim()) {
-                        this.errors.paymentReference = true;
-                        errorCount++;
-                    }
+                    if (!this.bookingForm.contactNumber) { this.errors.contactNumber = true; errorCount++; }
+                    if (this.bookingForm.paymentMode !== 'Cash' && !this.bookingForm.paymentReference.trim()) { this.errors.paymentReference = true; errorCount++; }
 
                     this.bookingForm.slots.forEach((slot, index) => {
                         let slotErrors = {};
@@ -286,23 +180,14 @@
                     if (errorCount === 0) {
                         for (let i = 0; i < this.bookingForm.slots.length; i++) {
                             let newSlot = this.bookingForm.slots[i];
-                            const newStart = this.parseTimeInt(newSlot.timeStart);
-                            const newEnd = this.parseTimeInt(newSlot.timeEnd);
-
+                            const newStart = this.parseTimeInt(newSlot.timeStart); const newEnd = this.parseTimeInt(newSlot.timeEnd);
                             for (let existing of this.localBookings) {
                                 if (existing.date === newSlot.date) {
-                                    const courtConflict = (existing.court === newSlot.court) ||
-                                                          (existing.court === 'WHOLE GYM' || existing.court === 'ALL 3 COURTS') ||
-                                                          (newSlot.court === 'WHOLE GYM' || newSlot.court === 'ALL 3 COURTS');
-                                    
+                                    const courtConflict = (existing.court === newSlot.court) || (existing.court.includes('WHOLE') || newSlot.court.includes('WHOLE') || existing.court.includes('ALL') || newSlot.court.includes('ALL'));
                                     if (courtConflict) {
-                                        const existStart = this.parseTimeInt(existing.timeStart);
-                                        const existEnd = this.parseTimeInt(existing.timeEnd);
-                                        
+                                        const existStart = this.parseTimeInt(existing.timeStart); const existEnd = this.parseTimeInt(existing.timeEnd);
                                         if (newStart < existEnd && newEnd > existStart) {
-                                            this.errors.slots[i].timeStart = true;
-                                            this.errors.slots[i].timeEnd = true;
-                                            this.errors.slots[i].court = true;
+                                            this.errors.slots[i].timeStart = true; this.errors.slots[i].timeEnd = true; this.errors.slots[i].court = true;
                                             conflictError = `Double Booking Blocked: ${newSlot.court} is already reserved on ${newSlot.date} between ${existing.timeStart} and ${existing.timeEnd}.`;
                                             break; 
                                         }
@@ -312,63 +197,27 @@
                             if (conflictError) break;
                         }
                     }
-
                     if (conflictError) return conflictError; 
-                    if (errorCount === 1) {
-                        if (this.errors.fullName) return "Full Name is required.";
-                        if (this.errors.email) return "Email Address is required.";
-                        if (this.errors.paymentReference) return "Please enter the transaction reference number.";
-                        return "Please complete the highlighted slot fields."; 
-                    } else if (errorCount > 1) {
-                        return `Please fill in the ${errorCount} highlighted fields.`;
-                    }
+                    if (errorCount > 0) return `Please complete all highlighted fields.`;
                     return null; 
                 },
 
                 calculateTotals() {
-                    let totalAmount = 0;
-                    let totalHours = 0;
-
+                    let totalAmount = 0; let totalHours = 0;
                     this.bookingForm.slots.forEach(slot => {
                         if (slot.timeStart && slot.timeEnd) {
-                            const startHour = this.parseTimeInt(slot.timeStart);
-                            const endHour = this.parseTimeInt(slot.timeEnd);
-
+                            const startHour = this.parseTimeInt(slot.timeStart); const endHour = this.parseTimeInt(slot.timeEnd);
                             if (endHour > startHour) {
                                 totalHours += (endHour - startHour);
-                                
-                                let dayRate = 450;
-                                let eveRate = 550;
-
-                                if (slot.sportType === 'Package A') {
-                                    dayRate = 1500;
-                                    eveRate = 2500;
-                                } else if (slot.sportType === 'Package B') {
-                                    dayRate = 600;
-                                    eveRate = 700;
-                                } else if (slot.sportType === 'Package C') {
-                                    dayRate = 550;
-                                    eveRate = 650;
-                                }
-
-                                for (let i = startHour; i < endHour; i++) {
-                                    if (i >= 6 && i < 17) { totalAmount += dayRate; } 
-                                    else if (i >= 17 && i < 22) { totalAmount += eveRate; }
-                                }
+                                let dayRate = 450; let eveRate = 550;
+                                if (slot.sportType === 'Package A') { dayRate = 1500; eveRate = 2500; } else if (slot.sportType === 'Package B') { dayRate = 600; eveRate = 700; } else if (slot.sportType === 'Package C') { dayRate = 550; eveRate = 650; }
+                                for (let i = startHour; i < endHour; i++) { if (i >= 6 && i < 17) { totalAmount += dayRate; } else if (i >= 17 && i < 22) { totalAmount += eveRate; } }
                             }
                         }
                     });
-
-                    this.bookingForm.totalHours = totalHours.toString();
-                    this.bookingForm.baseAmount = totalAmount.toFixed(2);
-
+                    this.bookingForm.totalHours = totalHours.toString(); this.bookingForm.baseAmount = totalAmount.toFixed(2);
                     let extraChargesTotal = 0;
-                    if (this.bookingForm.additionalCharges && this.bookingForm.additionalCharges.length > 0) {
-                        this.bookingForm.additionalCharges.forEach(charge => {
-                            let amt = parseFloat(charge.amount);
-                            if (!isNaN(amt)) { extraChargesTotal += amt; }
-                        });
-                    }
+                    if (this.bookingForm.additionalCharges) { this.bookingForm.additionalCharges.forEach(charge => { let amt = parseFloat(charge.amount); if (!isNaN(amt)) { extraChargesTotal += amt; } }); }
                     this.bookingForm.grandTotal = (totalAmount + extraChargesTotal).toFixed(2);
                 },
 
@@ -376,176 +225,98 @@
                     const blockHour = parseInt(block.start.split(':')[0], 10); 
                     for (let b of this.localBookings) {
                         if (b.date === this.currentDate && (b.court === court || b.court === 'WHOLE GYM' || b.court === 'ALL 3 COURTS')) {
-                            const startH = this.parseTimeInt(b.timeStart);
-                            const endH = this.parseTimeInt(b.timeEnd);
-                            
-                            if (blockHour >= startH && blockHour < endH) {
-                                return { booked: true, title: b.customer, bookingRef: b.ref };
-                            }
+                            const startH = this.parseTimeInt(b.timeStart); const endH = this.parseTimeInt(b.timeEnd);
+                            if (blockHour >= startH && blockHour < endH) { return { booked: true, title: b.customer, bookingRef: b.ref, status: b.status }; }
                         }
                     }
                     return { booked: false };
                 },
 
-                changeDay(offset) {
-                    this.isLoading = true;
-                    let dateObj = new Date(this.currentDate);
-                    dateObj.setDate(dateObj.getDate() + offset);
-                    this.currentDate = dateObj.toISOString().split('T')[0];
-                    setTimeout(() => { this.isLoading = false; }, 300);
-                },
-
-                fetchAvailabilityForDate(date) {
-                    this.isLoading = true;
-                    this.currentDate = date;
-                    setTimeout(() => { this.isLoading = false; }, 300);
-                },
+                changeDay(offset) { this.isLoading = true; let dateObj = new Date(this.currentDate); dateObj.setDate(dateObj.getDate() + offset); this.currentDate = dateObj.toISOString().split('T')[0]; setTimeout(() => { this.isLoading = false; }, 300); },
+                fetchAvailabilityForDate(date) { this.isLoading = true; this.currentDate = date; setTimeout(() => { this.isLoading = false; }, 300); },
 
                 handleCellClick(court, block) {
-                    this.bookingForm.slots = [{
-                        id: Date.now(), date: this.currentDate, sportType: 'Basketball', court: court, remarks: this.remarksMap['Basketball'], timeStart: block.queryTime, timeEnd: ''
-                    }];
+                    this.bookingForm.slots = [{ id: Date.now(), date: this.currentDate, sportType: 'Basketball', court: court, remarks: this.remarksMap['Basketball'], timeStart: block.queryTime, timeEnd: '' }];
                     this.errors.slots = [{}]; 
                     const startIndex = this.timeOptions.indexOf(block.queryTime);
-                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) {
-                        this.bookingForm.slots[0].timeEnd = this.timeOptions[startIndex + 1];
-                    }
-                    this.calculateTotals();
-                    this.currentView = 'new-booking';
+                    if (startIndex !== -1 && startIndex < this.timeOptions.length - 1) { this.bookingForm.slots[0].timeEnd = this.timeOptions[startIndex + 1]; }
+                    this.calculateTotals(); this.currentView = 'new-booking';
                 },
 
                 showToast(msg, type = 'success') {
-                    const toast = document.getElementById('toast');
-                    const toastMsg = document.getElementById('toast-text');
-                    const toastTitle = document.getElementById('toast-title');
-                    const toastIcon = document.getElementById('toast-icon');
-                    const iconBg = document.getElementById('icon-bg');
-                    
+                    const toast = document.getElementById('toast'); const toastMsg = document.getElementById('toast-text'); const toastTitle = document.getElementById('toast-title'); const toastIcon = document.getElementById('toast-icon'); const iconBg = document.getElementById('icon-bg');
                     toastMsg.innerText = msg;
-                    
                     if (type === 'error') {
                         toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-white text-slate-800 px-6 py-4 rounded-2xl shadow-floating flex items-center border border-red-100`;
-                        toastTitle.innerText = "Action Required";
-                        toastTitle.className = "block font-bold text-sm text-red-600";
-                        toastMsg.className = "block text-xs text-slate-500 mt-0.5";
-                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>`;
-                        iconBg.className = "bg-red-50 p-2.5 rounded-xl mr-4 text-red-500";
+                        toastTitle.innerText = "Action Required"; toastTitle.className = "block font-bold text-sm text-red-600";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>`; iconBg.className = "bg-red-50 p-2.5 rounded-xl mr-4 text-red-500";
                     } else {
                         toast.className = `print:hidden fixed bottom-6 right-6 z-[100] transform transition-all duration-300 bg-white text-slate-800 px-6 py-4 rounded-2xl shadow-floating flex items-center border border-slate-100`;
-                        toastTitle.innerText = "Success";
-                        toastTitle.className = "block font-bold text-sm text-slate-900";
-                        toastMsg.className = "block text-xs text-slate-500 mt-0.5";
-                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>`;
-                        iconBg.className = "bg-green-50 p-2.5 rounded-xl mr-4 text-green-500";
+                        toastTitle.innerText = "Success"; toastTitle.className = "block font-bold text-sm text-slate-900";
+                        toastIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>`; iconBg.className = "bg-green-50 p-2.5 rounded-xl mr-4 text-green-500";
                     }
-                    
-                    toast.classList.remove('translate-y-20', 'opacity-0');
-                    toast.classList.add('translate-y-0', 'opacity-100');
-                    setTimeout(() => { 
-                        toast.classList.remove('translate-y-0', 'opacity-100'); 
-                        toast.classList.add('translate-y-20', 'opacity-0'); 
-                    }, 5000); 
+                    toast.classList.remove('translate-y-20', 'opacity-0'); toast.classList.add('translate-y-0', 'opacity-100');
+                    setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-20', 'opacity-0'); }, 5000); 
                 },
 
-                switchView(viewName) {
-                    this.currentView = viewName;
-                    this.sidebarOpen = false; 
-                    if (viewName === 'master-list' || viewName === 'pending' || viewName === 'calendar') { this.loadMasterList(); }
-                },
+                switchView(viewName) { this.currentView = viewName; this.sidebarOpen = false; if (viewName === 'master-list' || viewName === 'pending' || viewName === 'calendar') { this.loadMasterList(); } },
 
                 async loadMasterList() {
                     if (!this.scriptURL || this.scriptURL.includes('YOUR_GOOGLE_APPS_SCRIPT')) return;
                     this.isLoading = true;
                     try {
-                        const response = await fetch(this.scriptURL);
+                        const cacheBuster = (this.scriptURL.includes('?') ? '&' : '?') + 'nocache=' + new Date().getTime();
+                        const response = await fetch(this.scriptURL + cacheBuster);
                         const result = await response.json();
                         if (result.status === 'success' && result.data) {
                             this.masterList = result.data;
                             let newLocalBookings = [];
                             result.data.forEach(item => {
-                                // Calendar only shows confirmed logic
-                                if (item.status === 'Confirmed' || !item.status) {
-                                    newLocalBookings.push({
-                                        ref: item.bookingRef || 'BK-LIVE', customer: item.fullName, date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd
-                                    });
+                                if (item.status === 'Confirmed' || item.status === 'Pending') {
+                                    newLocalBookings.push({ ref: item.bookingRef || 'BK-LIVE', customer: item.fullName, date: item.date, court: item.facility, timeStart: item.timeStart, timeEnd: item.timeEnd, status: item.status });
                                 }
                             });
                             this.localBookings = newLocalBookings;
                             localStorage.setItem('skills_gym_bookings', JSON.stringify(this.localBookings));
                             localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
                         }
-                    } catch (error) {
-                        console.error("Server sync error, using local cache.", error);
-                    } finally {
-                        this.isLoading = false;
-                    }
+                    } catch (error) { console.error("Server sync error, using local cache.", error); } 
+                    finally { this.isLoading = false; }
                 },
 
                 async submitBooking() {
                     const errorMessage = this.validateForm();
-                    if (errorMessage) {
-                        this.showToast(errorMessage, 'error');
-                        return; 
-                    }
+                    if (errorMessage) { this.showToast(errorMessage, 'error'); return; }
 
                     this.isLoading = true;
-                    const refNumber = 'BK-' + Math.floor(Math.random() * 90000 + 10000);
-                    const targetDate = this.bookingForm.slots[0].date;
-                    const now = new Date();
+                    const refNumber = 'REQ-' + Math.floor(Math.random() * 90000 + 10000);
+                    const targetDate = this.bookingForm.slots[0].date; const now = new Date();
 
-                    this.lastSavedBooking = JSON.parse(JSON.stringify({
-                        ...this.bookingForm,
-                        refNumber: refNumber,
-                        printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                    }));
+                    this.lastSavedBooking = JSON.parse(JSON.stringify({ ...this.bookingForm, refNumber: refNumber, printDate: now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }));
+                    const safePaymentString = this.bookingForm.paymentMode === 'Cash' ? 'Cash' : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
 
-                    const safePaymentString = this.bookingForm.paymentMode === 'Cash' 
-                        ? 'Cash' : `${this.bookingForm.paymentMode} (Ref: ${this.bookingForm.paymentReference})`;
-
+                    // Optimistic Local Save - Hardcoded Confirmed for Admin Bookings
                     this.masterList.unshift({
-                        bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A',
+                        bookingRef: refNumber, timestamp: now.toISOString(), fullName: this.bookingForm.fullName, organization: this.bookingForm.organization || 'N/A', contactNumber: this.bookingForm.contactNumber,
                         date: targetDate + (this.bookingForm.slots.length > 1 ? ` (+${this.bookingForm.slots.length - 1})` : ''),
-                        facility: this.bookingForm.slots[0].court, timeStart: this.bookingForm.slots[0].timeStart, timeEnd: this.bookingForm.slots[0].timeEnd, grandTotal: this.bookingForm.grandTotal,
-                        paymentMode: safePaymentString,
-                        status: 'Pending'
+                        facility: this.bookingForm.slots[0].court, timeStart: this.bookingForm.slots[0].timeStart, timeEnd: this.bookingForm.slots[0].timeEnd, grandTotal: this.bookingForm.grandTotal, paymentMode: safePaymentString, status: 'Confirmed'
                     });
-
                     localStorage.setItem('skills_gym_master_list', JSON.stringify(this.masterList));
 
-                    const backendPayload = { ...this.bookingForm, bookingRef: refNumber, paymentMode: safePaymentString };
-
-                    try {
-                        const response = await fetch(this.scriptURL, {
-                            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(backendPayload)
-                        });
-                    } catch (error) {
-                        console.log("Offline backup generated.");
-                    } finally {
-                        this.isLoading = false;
-                        this.showToast(`Booking ${refNumber} Saved as Pending!`, 'success');
-                        this.showReceiptModal = true;
+                    // Send to backend with status bypass
+                    const backendPayload = { ...this.bookingForm, bookingRef: refNumber, paymentMode: safePaymentString, contactNumber: this.bookingForm.contactNumber, status: 'Confirmed' };
+                    try { await fetch(this.scriptURL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(backendPayload) }); } 
+                    catch (error) { console.log("Offline backup generated."); } 
+                    finally {
+                        this.isLoading = false; this.showToast(`Booking ${refNumber} Saved!`, 'success'); this.showReceiptModal = true;
                     }
                 },
 
-                printAndFinish() {
-                    window.print();
-                    setTimeout(() => { this.finishAndRedirect(); }, 500);
-                },
-
+                printAndFinish() { window.print(); setTimeout(() => { this.finishAndRedirect(); }, 500); },
                 finishAndRedirect() {
-                    this.showReceiptModal = false;
-                    const targetDate = this.lastSavedBooking.slots[0].date;
-                    
-                    this.bookingForm = { 
-                        fullName: '', organization: '', email: '', address: '', idType: 'National ID', idNumber: '',
-                        slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ],
-                        totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', paymentReference: '', additionalCharges: []
-                    };
-                    this.errors = { paymentReference: false, slots: [{}] }; 
-                    this.lastSavedBooking = null;
-                    this.currentDate = targetDate;
-                    this.switchView('pending');
+                    this.showReceiptModal = false; const targetDate = this.lastSavedBooking.slots[0].date;
+                    this.bookingForm = { fullName: '', organization: '', email: '', contactNumber: '', address: '', idType: 'National ID', idNumber: '', slots: [ { id: Date.now(), date: new Date().toISOString().split('T')[0], sportType: '', court: '', remarks: '', timeStart: '', timeEnd: '' } ], totalHours: '0', baseAmount: '0.00', grandTotal: '0.00', paymentMode: 'Cash', paymentReference: '', additionalCharges: [] };
+                    this.errors = { paymentReference: false, slots: [{}] }; this.lastSavedBooking = null; this.currentDate = targetDate; this.switchView('calendar');
                 }
             }))
         })
@@ -554,492 +325,204 @@
 <body class="bg-slate-50 text-slate-800 font-sans antialiased overflow-x-hidden selection:bg-brand-blue/20 selection:text-brand-blue" x-data="appData">
 
     <div id="app-wrapper" class="print:hidden flex h-screen overflow-hidden ambient-gradient relative">
-        
         <div x-show="sidebarOpen" class="mobile-overlay fixed inset-0 bg-slate-900/40 z-20 lg:hidden backdrop-blur-xs" @click="sidebarOpen = false" x-transition.opacity style="display: none;"></div>
 
-        <aside class="w-[280px] bg-white/80 backdrop-blur-xl flex flex-col fixed inset-y-0 left-0 z-30 lg:static lg:translate-x-0 shadow-[10px_0_30px_rgba(0,0,0,0.01)] border-r border-slate-200/50 transition-transform duration-300 transform"
-               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
-            
+        <aside class="w-[280px] bg-white/80 backdrop-blur-xl flex flex-col fixed inset-y-0 left-0 z-30 lg:static lg:translate-x-0 shadow-[10px_0_30px_rgba(0,0,0,0.01)] border-r border-slate-200/50 transition-transform duration-300 transform" :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
             <div class="flex items-center justify-between px-8 h-24 border-b border-slate-100/50">
                 <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-3 shadow-lg shadow-brand-blue/30">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-indigo-600 flex items-center justify-center mr-3 shadow-lg shadow-brand-blue/30"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                     <h1 class="text-xl font-black tracking-tight text-brand-dark">SKILLS</h1>
                 </div>
-                <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-slate-800 p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-slate-800 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             
             <nav class="p-5 space-y-1.5 mt-2 flex-1 overflow-y-auto">
                 <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 mt-2">Menu</p>
-                
-                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                    <svg class="w-5 h-5 mr-3" :class="currentView === 'dashboard' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Dashboard Analytics
-                </a>
-                
-                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                    <svg class="w-5 h-5 mr-3" :class="currentView === 'calendar' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    Live Calendar
-                </a>
-                
-                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                    <svg class="w-5 h-5 mr-3" :class="currentView === 'new-booking' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    New Booking
-                </a>
+                <a href="#" @click.prevent="switchView('dashboard')" :class="currentView === 'dashboard' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm"><svg class="w-5 h-5 mr-3" :class="currentView === 'dashboard' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> Dashboard Analytics</a>
+                <a href="#" @click.prevent="switchView('calendar')" :class="currentView === 'calendar' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm"><svg class="w-5 h-5 mr-3" :class="currentView === 'calendar' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Live Calendar</a>
+                <a href="#" @click.prevent="switchView('new-booking')" :class="currentView === 'new-booking' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm"><svg class="w-5 h-5 mr-3" :class="currentView === 'new-booking' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> New Booking</a>
                 
                 <div class="pt-6 mt-4 border-t border-slate-100/50">
                     <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Database</p>
-
-                    <a href="#" @click.prevent="switchView('pending')" :class="currentView === 'pending' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                        <svg class="w-5 h-5 mr-3" :class="currentView === 'pending' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Pending Requests
-                        <span class="ml-auto bg-amber-100 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-bold" x-text="pendingBookings.length"></span>
-                    </a>
-
-                    <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm">
-                        <svg class="w-5 h-5 mr-3" :class="currentView === 'master-list' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-                        Master List Records
-                    </a>
+                    <a href="#" @click.prevent="switchView('pending')" :class="currentView === 'pending' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm"><svg class="w-5 h-5 mr-3" :class="currentView === 'pending' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Pending Requests <span class="ml-auto bg-amber-100 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-bold" x-text="pendingBookings.length"></span></a>
+                    <a href="#" @click.prevent="switchView('master-list')" :class="currentView === 'master-list' ? 'bg-white shadow-sm border border-slate-100 text-brand-blue' : 'text-slate-500 hover:bg-slate-50/80 hover:text-slate-800'" class="flex items-center px-4 py-3 rounded-xl transition-all font-semibold text-sm"><svg class="w-5 h-5 mr-3" :class="currentView === 'master-list' ? 'text-brand-blue' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg> Master List Records</a>
                 </div>
             </nav>
-            
             <div class="p-6 border-t border-slate-100/50 bg-slate-50/50 mt-auto">
-                <div class="flex items-center group">
-                    <div class="w-10 h-10 rounded-full bg-white border border-slate-200 text-brand-dark flex items-center justify-center font-bold text-sm shadow-sm transition-colors">AU</div>
-                    <div class="ml-3">
-                        <p class="text-sm font-bold text-brand-dark leading-tight">Anthony Toñacao</p>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Property Custodian</p>
-                    </div>
-                </div>
+                <div class="flex items-center group"><div class="w-10 h-10 rounded-full bg-white border border-slate-200 text-brand-dark flex items-center justify-center font-bold text-sm shadow-sm transition-colors">AT</div><div class="ml-3"><p class="text-sm font-bold text-brand-dark leading-tight">Anthony Toñacao</p><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Property Custodian</p></div></div>
             </div>
         </aside>
 
+        <!-- Main Workspace -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-            
             <div x-show="isLoading" class="absolute inset-0 z-50 bg-white/60 backdrop-blur-md flex flex-col items-center justify-center" style="display: none;" x-transition.opacity>
-                <div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center">
-                    <svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span>
-                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-saas border border-slate-100 flex flex-col items-center"><svg class="animate-spin h-8 w-8 text-brand-blue mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Processing...</span></div>
             </div>
 
             <header class="h-24 flex items-center justify-between px-6 md:px-10 z-10 shrink-0">
-                <div class="flex items-center">
-                    <button @click="sidebarOpen = true" class="lg:hidden p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 mr-4 shadow-sm active:scale-95 transition-transform">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                    </button>
-                    <div>
-                        <h2 class="text-xl md:text-2xl font-black text-brand-dark tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Summary' : (currentView === 'calendar' ? 'Live Schedule' : (currentView === 'new-booking' ? 'New Reservation' : (currentView === 'pending' ? 'Action Required' : 'Database Archive')))"></h2>
-                        <p class="text-xs md:text-sm text-slate-400 font-medium mt-0.5 hidden sm:block">Primary Skills Educational Foundation, Inc.</p>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-3">
-                    <button @click="loadMasterList()" class="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-blue shadow-sm transition-all" title="Synchronize Data">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"></path></svg>
-                    </button>
-                </div>
+                <div class="flex items-center"><button @click="sidebarOpen = true" class="lg:hidden p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 mr-4 shadow-sm"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button><div><h2 class="text-xl md:text-2xl font-black text-brand-dark tracking-tight" x-text="currentView === 'dashboard' ? 'Dashboard Summary' : (currentView === 'calendar' ? 'Live Schedule' : (currentView === 'new-booking' ? 'New Reservation' : (currentView === 'pending' ? 'Action Required' : 'Database Archive')))"></h2><p class="text-xs md:text-sm text-slate-400 font-medium mt-0.5 hidden sm:block">Primary Skills Educational Foundation, Inc.</p></div></div>
+                <div class="flex space-x-3"><button @click="loadMasterList()" class="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-blue shadow-sm transition-all" title="Synchronize Data"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"></path></svg></button></div>
             </header>
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-10 pt-2">
-                
                 <div x-show="currentView === 'dashboard'" style="display: none;" x-transition.opacity.duration.300ms class="space-y-8 pb-10">
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                        <p class="text-slate-500 font-medium text-sm">Real-time revenue processing breakdown & metrics.</p>
-                        <button @click="switchView('new-booking')" class="bg-brand-blue hover:bg-brand-blueHover text-white px-6 py-3 rounded-full font-bold shadow-floating transition-all flex items-center text-sm w-full sm:w-auto justify-center">
-                            <span class="mr-2 text-lg leading-none">+</span> Walk-In Reservation
-                        </button>
-                    </div>
-                    
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"><p class="text-slate-500 font-medium text-sm">Real-time revenue processing breakdown & metrics.</p><button @click="switchView('new-booking')" class="bg-brand-blue hover:bg-brand-blueHover text-white px-6 py-3 rounded-full font-bold shadow-floating transition-all flex items-center text-sm w-full sm:w-auto justify-center"><span class="mr-2 text-lg leading-none">+</span> Walk-In Reservation</button></div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 hover:-translate-y-1 transition-transform duration-300">
-                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Gross Gym Revenue</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-brand-dark tracking-tight" x-text="'₱' + metrics.grandTotal"></h3>
-                            <div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-brand-blue h-full w-full"></div></div>
-                        </div>
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 hover:-translate-y-1 transition-transform duration-300">
-                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Cash Remittances</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-emerald-600 tracking-tight" x-text="'₱' + metrics.cash"></h3>
-                            <div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-emerald-500 h-full w-3/4"></div></div>
-                        </div>
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 hover:-translate-y-1 transition-transform duration-300">
-                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">GCash Collections</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-blue-500 tracking-tight" x-text="'₱' + metrics.gcash"></h3>
-                            <div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-blue-400 h-full w-1/2"></div></div>
-                        </div>
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 hover:-translate-y-1 transition-transform duration-300">
-                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Bank Transfers</p>
-                            <h3 class="text-2xl md:text-3xl font-black text-indigo-600 tracking-tight" x-text="'₱' + metrics.bank"></h3>
-                            <div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-indigo-500 h-full w-1/4"></div></div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 flex items-center">
-                            <div class="bg-amber-50 p-4 rounded-2xl mr-5 text-amber-500 border border-amber-100"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M16.243 17.657l.707-.707M7.757 5.757l.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z"></path></svg></div>
-                            <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peak Booking Day</p>
-                                <h4 class="text-xl font-black text-brand-dark mt-0.5" x-text="metrics.peakDay"></h4>
-                            </div>
-                        </div>
-                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6 flex items-center">
-                            <div class="bg-rose-50 p-4 rounded-2xl mr-5 text-rose-500 border border-rose-100"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                            <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peak Operating Hour</p>
-                                <h4 class="text-xl font-black text-brand-dark mt-0.5" x-text="metrics.peakHour"></h4>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        <div class="bg-white/95 rounded-3xl p-6 md:p-8 border border-white shadow-saas flex flex-col">
-                            <div class="mb-6">
-                                <h4 class="text-sm font-bold text-brand-dark uppercase tracking-wider">Weekly Distribution Graph</h4>
-                                <p class="text-xs text-slate-400 mt-0.5">Booking registration counts by day of week.</p>
-                            </div>
-                            <div class="space-y-4 flex-1 flex flex-col justify-center">
-                                <template x-for="(val, day) in metrics.daysData" :key="day">
-                                    <div class="flex items-center text-xs">
-                                        <span class="w-24 font-semibold text-slate-500 shrink-0" x-text="day"></span>
-                                        <div class="flex-1 bg-slate-100 h-6 rounded-lg overflow-hidden relative border border-slate-200/40">
-                                            <div class="bg-gradient-to-r from-brand-blue to-blue-400 h-full transition-all duration-500" 
-                                                 :style="'width: ' + ((val / metrics.maxDayValue) * 100) + '%'"></div>
-                                            <span class="absolute inset-y-0 right-3 flex items-center font-bold text-slate-600" x-text="val"></span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <div class="bg-white/95 rounded-3xl p-6 md:p-8 border border-white shadow-saas flex flex-col">
-                            <div class="mb-6">
-                                <h4 class="text-sm font-bold text-brand-dark uppercase tracking-wider">Hourly Load Analytics</h4>
-                                <p class="text-xs text-slate-400 mt-0.5">Frequency density mapped by slot initialization hour.</p>
-                            </div>
-                            <div class="max-h-[340px] overflow-y-auto pr-2 space-y-3.5">
-                                <template x-for="(val, hr) in metrics.hoursData" :key="hr">
-                                    <div class="flex items-center text-xs">
-                                        <span class="w-20 font-bold text-slate-400 shrink-0" x-text="hr"></span>
-                                        <div class="flex-1 bg-slate-50 h-5 rounded-md overflow-hidden relative border border-slate-200/50">
-                                            <div class="bg-gradient-to-r from-indigo-500 to-purple-400 h-full transition-all duration-500" 
-                                                 :style="'width: ' + ((val / metrics.maxHourValue) * 100) + '%'"></div>
-                                            <span class="absolute inset-y-0 right-3 flex items-center font-bold text-slate-500 text-[10px]" x-text="val + ' booked'"></span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
+                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6"><p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Gross Gym Revenue</p><h3 class="text-2xl md:text-3xl font-black text-brand-dark tracking-tight" x-text="'₱' + metrics.grandTotal"></h3><div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-brand-blue h-full w-full"></div></div></div>
+                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6"><p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Cash Remittances</p><h3 class="text-2xl md:text-3xl font-black text-emerald-600 tracking-tight" x-text="'₱' + metrics.cash"></h3><div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-emerald-500 h-full w-3/4"></div></div></div>
+                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6"><p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">GCash Collections</p><h3 class="text-2xl md:text-3xl font-black text-blue-500 tracking-tight" x-text="'₱' + metrics.gcash"></h3><div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-blue-400 h-full w-1/2"></div></div></div>
+                        <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-saas border border-white p-6"><p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">Bank Transfers</p><h3 class="text-2xl md:text-3xl font-black text-indigo-600 tracking-tight" x-text="'₱' + metrics.bank"></h3><div class="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden"><div class="bg-indigo-500 h-full w-1/4"></div></div></div>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'calendar'" style="display: none;" x-transition.opacity.duration.300ms class="flex flex-col max-w-7xl mx-auto w-full pb-10">
                     <div class="flex items-center space-x-4 mb-8">
-                        <div class="flex items-center bg-white rounded-2xl border border-slate-200 shadow-saas overflow-hidden h-12 p-1">
-                            <button @click="changeDay(-1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark transition-colors font-bold">&lt;</button>
-                            <input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none text-sm font-bold text-brand-dark px-3 h-full text-center outline-none bg-transparent w-36 md:w-40 cursor-pointer">
-                            <button @click="changeDay(1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark transition-colors font-bold">&gt;</button>
-                        </div>
-                        <button @click="fetchAvailabilityForDate(new Date().toISOString().split('T')[0])" class="text-xs font-bold text-brand-blue bg-white border border-slate-200 shadow-sm hover:shadow-md uppercase tracking-widest px-5 h-12 rounded-2xl transition-all">Today</button>
+                        <div class="flex items-center bg-white rounded-2xl border border-slate-200 shadow-saas overflow-hidden h-12 p-1"><button @click="changeDay(-1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark font-bold">&lt;</button><input type="date" x-model="currentDate" @change="fetchAvailabilityForDate($event.target.value)" class="border-none text-sm font-bold text-brand-dark px-3 h-full text-center outline-none bg-transparent w-36 md:w-40 cursor-pointer"><button @click="changeDay(1)" class="px-4 h-full rounded-xl text-slate-400 hover:bg-slate-50 hover:text-brand-dark font-bold">&gt;</button></div>
                     </div>
-
                     <div class="bg-white/95 rounded-3xl shadow-saas border border-white overflow-hidden mb-10">
-                        <div class="overflow-x-auto">
-                            <div class="min-w-[850px]">
-                                <div class="grid grid-cols-[160px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10">
-                                    <div class="p-5 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-200/60 flex items-center justify-center">Time Block</div>
-                                    <div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 1</div>
-                                    <div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 2</div>
-                                    <div class="p-5 text-center font-bold text-brand-dark text-sm">Court 3</div>
+                        <div class="overflow-x-auto"><div class="min-w-[850px]">
+                            <div class="grid grid-cols-[160px_1fr_1fr_1fr] bg-brand-soft border-b border-slate-200 sticky top-0 z-10"><div class="p-5 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-200/60">Time Block</div><div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 1</div><div class="p-5 text-center font-bold text-brand-dark border-r border-slate-200/60 text-sm">Court 2</div><div class="p-5 text-center font-bold text-brand-dark text-sm">Court 3</div></div>
+                            <template x-for="block in timeBlocks" :key="block.start">
+                                <div class="grid grid-cols-[160px_1fr_1fr_1fr] border-b border-slate-100 group bg-white hover:bg-slate-50/40 transition-colors">
+                                    <div class="p-4 text-[10px] font-bold text-slate-400 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap uppercase tracking-wider" x-text="block.label"></div>
+                                    <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
+                                        <div class="p-2 border-r border-slate-100 last:border-r-0 h-24 relative">
+                                            
+                                            <!-- UPDATED CALENDAR CELL RENDER LOGIC FOR ADMIN -->
+                                            <template x-if="getBookingData(block, court).booked">
+                                                <div class="w-full h-full rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-floating p-1 transition-all hover:opacity-90"
+                                                     :class="getBookingData(block, court).status === 'Pending' ? 'bg-amber-500 text-white' : 'bg-brand-blue text-white'">
+                                                    <span class="text-[8px] uppercase tracking-widest font-black bg-white/20 px-2 py-0.5 rounded-full mb-1" x-text="getBookingData(block, court).status"></span>
+                                                    <span class="text-xs font-bold truncate w-full text-center px-1" x-text="getBookingData(block, court).title"></span>
+                                                    
+                                                    <!-- Only display Reference Number if Admin Confirmed it -->
+                                                    <template x-if="getBookingData(block, court).status === 'Confirmed'">
+                                                        <span class="text-[9px] font-mono font-black bg-white/20 px-2 py-0.5 rounded-md mt-1 shadow-sm" x-text="getBookingData(block, court).bookingRef"></span>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!getBookingData(block, court).booked">
+                                                <div class="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center text-brand-blue font-bold text-[11px] opacity-0 group-hover:opacity-100 hover:bg-brand-soft hover:border-brand-blue/30 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Reserve</div>
+                                            </template>
+                                            
+                                        </div>
+                                    </template>
                                 </div>
-                                
-                                <template x-for="block in timeBlocks" :key="block.start">
-                                    <div class="grid grid-cols-[160px_1fr_1fr_1fr] border-b border-slate-100 group bg-white hover:bg-slate-50/40 transition-colors">
-                                        <div class="p-4 text-[10px] font-bold text-slate-400 text-center border-r border-slate-100 flex items-center justify-center whitespace-nowrap uppercase tracking-wider" x-text="block.label"></div>
-                                        
-                                        <template x-for="court in ['Court 1', 'Court 2', 'Court 3']" :key="court">
-                                            <div class="p-2 border-r border-slate-100 last:border-r-0 h-24 relative">
-                                                <template x-if="getBookingData(block, court).booked">
-                                                    <div class="w-full h-full rounded-2xl bg-brand-blue text-white flex flex-col items-center justify-center cursor-default shadow-floating p-1">
-                                                        <span class="text-xs font-bold truncate w-full text-center px-2" x-text="getBookingData(block, court).title"></span>
-                                                        <span class="text-[8px] uppercase tracking-widest font-black bg-white/20 px-2 py-0.5 rounded-full mt-1.5" x-text="getBookingData(block, court).bookingRef"></span>
-                                                    </div>
-                                                </template>
-                                                
-                                                <template x-if="!getBookingData(block, court).booked">
-                                                    <div class="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center text-brand-blue font-bold text-[11px] opacity-0 group-hover:opacity-100 hover:bg-brand-soft hover:border-brand-blue/30 transition-all cursor-pointer" @click="handleCellClick(court, block)">+ Reserve</div>
-                                                </template>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
+                            </template>
+                        </div></div>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'new-booking'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-4xl mx-auto">
                     <div class="bg-white/95 rounded-[2rem] shadow-saas border border-white p-6 md:p-12 relative">
-                        <div class="border-b border-slate-100 pb-6 mb-6">
-                            <h3 class="text-base font-bold text-brand-dark mb-0.5">Client Information</h3>
-                            <p class="text-xs text-slate-400 font-medium">Primary administrative mapping fields.</p>
-                        </div>
+                        <div class="border-b border-slate-100 pb-6 mb-6"><h3 class="text-base font-bold text-brand-dark mb-0.5">Client Information</h3></div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 mb-10">
-                            <div>
-                                <label class="form-label">Full Name <span class="text-red-500">*</span></label>
-                                <input type="text" class="form-input" :class="errors.fullName ? '!border-red-400 !bg-red-50' : ''" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName" @input="errors.fullName = false">
-                            </div>
-                            <div>
-                                <label class="form-label">Organization Name</label>
-                                <input type="text" class="form-input" placeholder="e.g. SKILLS Inc. (Optional)" x-model="bookingForm.organization">
-                            </div>
-                            <div>
-                                <label class="form-label">Email Address <span class="text-red-500">*</span></label>
-                                <input type="email" class="form-input" :class="errors.email ? '!border-red-400 !bg-red-50' : ''" placeholder="customer@domain.com" x-model="bookingForm.email" @input="errors.email = false">
-                            </div>
-                            <div>
-                                <label class="form-label">Home Address</label>
-                                <input type="text" class="form-input" placeholder="Complete physical address" x-model="bookingForm.address">
-                            </div>
-                            <div>
-                                <label class="form-label">Type of ID</label>
-                                <select class="form-input font-semibold" x-model="bookingForm.idType"><option>National ID</option><option>Driver's License</option><option>Passport</option></select>
-                            </div>
-                            <div>
-                                <label class="form-label">ID Number</label>
-                                <input type="text" class="form-input font-mono" placeholder="Identification Serial" x-model="bookingForm.idNumber">
-                            </div>
+                            <div><label class="form-label">Full Name <span class="text-red-500">*</span></label><input type="text" class="form-input" :class="errors.fullName ? '!border-red-400 !bg-red-50' : ''" placeholder="e.g. Juan Dela Cruz" x-model="bookingForm.fullName" @input="errors.fullName = false"></div>
+                            <div><label class="form-label">Organization Name</label><input type="text" class="form-input" placeholder="e.g. SKILLS Inc. (Optional)" x-model="bookingForm.organization"></div>
+                            <div><label class="form-label">Email Address</label><input type="email" class="form-input" placeholder="customer@domain.com" x-model="bookingForm.email"></div>
+                            <div><label class="form-label">Contact Number <span class="text-red-500">*</span></label><input type="tel" class="form-input" :class="errors.contactNumber ? '!border-red-400 !bg-red-50' : ''" placeholder="09XX XXX XXXX" x-model="bookingForm.contactNumber" @input="errors.contactNumber = false"></div>
                         </div>
 
-                        <div class="border-b border-slate-100 pb-6 mb-6">
-                            <h3 class="text-base font-bold text-brand-dark mb-0.5">Allocation Scheduling</h3>
-                            <p class="text-xs text-slate-400 font-medium">Dynamically pricing calculations check hourly segments matrix values.</p>
-                        </div>
+                        <div class="border-b border-slate-100 pb-6 mb-6"><h3 class="text-base font-bold text-brand-dark mb-0.5">Allocation Scheduling</h3></div>
 
                         <template x-for="(slot, index) in bookingForm.slots" :key="slot.id">
                             <div class="bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 mb-5 relative shadow-xs">
                                 <button x-show="bookingForm.slots.length > 1" @click="removeSlot(index)" class="absolute top-5 right-5 text-[9px] font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors px-3 py-1.5 rounded-lg uppercase tracking-wider">Remove</button>
-                                
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-5">
-                                    <div>
-                                        <label class="form-label">Event Date <span class="text-red-500">*</span></label>
-                                        <input type="date" class="form-input font-semibold" :class="errors.slots[index]?.date ? '!border-red-400 !bg-red-50' : ''" x-model="slot.date" @change="if(errors.slots[index]) errors.slots[index].date = false">
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="form-label">Type / Category <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-semibold" :class="errors.slots[index]?.sportType ? '!border-red-400 !bg-red-50' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)">
-                                            <option value="" disabled>Select category...</option>
-                                            <option>Basketball</option><option>Volleyball</option><option>Badminton</option>
-                                            <option>Package A</option><option>Package B</option><option>Package C</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label">Allocated Area <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-semibold" :class="errors.slots[index]?.court ? '!border-red-400 !bg-red-50' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="if(errors.slots[index]) errors.slots[index].court = false">
-                                            <option value="" disabled>Select area...</option>
-                                            <template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac">
-                                                <option x-text="fac" :value="fac"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-
-                                    <div class="sm:col-span-3">
-                                        <label class="form-label">Inclusions Context</label>
-                                        <input type="text" class="form-input text-slate-600 text-xs" placeholder="Inclusions parameters details..." x-model="slot.remarks">
-                                    </div>
+                                    <div><label class="form-label">Event Date <span class="text-red-500">*</span></label><input type="date" class="form-input font-semibold" :class="errors.slots[index]?.date ? '!border-red-400 !bg-red-50' : ''" x-model="slot.date" @change="slot.timeStart=''; slot.timeEnd=''; calculateTotals(); if(errors.slots[index]) errors.slots[index].date = false"></div>
+                                    <div><label class="form-label">Type / Category <span class="text-red-500">*</span></label><select class="form-input font-semibold" :class="errors.slots[index]?.sportType ? '!border-red-400 !bg-red-50' : ''" x-model="slot.sportType" @change="handleSportTypeChange(slot, index)"><option value="" disabled>Select category...</option><option>Basketball</option><option>Volleyball</option><option>Badminton</option><option>Package A</option><option>Package B</option><option>Package C</option></select></div>
+                                    <div><label class="form-label">Allocated Area <span class="text-red-500">*</span></label><select class="form-input font-semibold" :class="errors.slots[index]?.court ? '!border-red-400 !bg-red-50' : ''" x-model="slot.court" :disabled="!slot.sportType" @change="slot.timeStart=''; slot.timeEnd=''; calculateTotals(); if(errors.slots[index]) errors.slots[index].court = false"><option value="" disabled>Select area...</option><template x-for="fac in getAvailableFacilities(slot.sportType)" :key="fac"><option x-text="fac" :value="fac"></option></template></select></div>
                                     
                                     <div>
                                         <label class="form-label">Time Start <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-bold text-xs" :class="errors.slots[index]?.timeStart ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeStart" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeStart = false">
-                                            <option value="" disabled>Start...</option>
-                                            <template x-for="time in timeOptions.slice(0, -1)" :key="time"><option x-text="time" :value="time"></option></template>
+                                        <select class="form-input font-bold text-xs" :class="errors.slots[index]?.timeStart ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeStart" @change="calculateTotals(); slot.timeEnd=''; if(errors.slots[index]) errors.slots[index].timeStart = false">
+                                            <option value="" disabled>Start...</option><template x-for="time in getAvailableTimeStarts(slot)" :key="time"><option x-text="time" :value="time"></option></template>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="form-label">Time End <span class="text-red-500">*</span></label>
-                                        <select class="form-input font-bold text-xs" :class="errors.slots[index]?.timeEnd ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false">
-                                            <option value="" disabled>End...</option>
-                                            <template x-for="time in timeOptions.slice(1)" :key="time"><option x-text="time" :value="time"></option></template>
+                                        <select class="form-input font-bold text-xs" :class="errors.slots[index]?.timeEnd ? '!border-red-400 !bg-red-50' : ''" x-model="slot.timeEnd" @change="calculateTotals(); if(errors.slots[index]) errors.slots[index].timeEnd = false" :disabled="!slot.timeStart">
+                                            <option value="" disabled>End...</option><template x-for="time in getAvailableTimeEnds(slot)" :key="time"><option x-text="time" :value="time"></option></template>
                                         </select>
                                     </div>
+                                    <div class="sm:col-span-1"><label class="form-label">Inclusions Context</label><input type="text" class="form-input text-slate-600 text-xs" placeholder="Parameters..." x-model="slot.remarks"></div>
                                 </div>
                             </div>
                         </template>
-
-                        <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-transparent border-2 border-dashed border-slate-200 rounded-2xl text-xs font-bold text-slate-400 hover:border-brand-blue hover:text-brand-blue hover:bg-brand-soft transition-all">
-                            + Add Segment Block Slot
-                        </button>
-
-                        <div class="grid grid-cols-2 gap-4 mb-8">
-                            <div><label class="form-label">Accumulated Hours</label><input type="text" class="form-input bg-slate-100 font-bold border-transparent" x-model="bookingForm.totalHours" readonly></div>
-                            <div><label class="form-label">Base Subtotal</label><input type="text" class="form-input bg-slate-100 font-bold text-slate-600 border-transparent" x-model="bookingForm.baseAmount" readonly></div>
-                        </div>
-
-                        <div class="border border-slate-200 rounded-2xl p-5 mb-8 bg-white shadow-xs">
-                            <div class="flex justify-between items-center" :class="bookingForm.additionalCharges.length > 0 ? 'mb-4' : ''">
-                                <div>
-                                    <h3 class="text-xs font-bold text-brand-dark">Miscellaneous Surcharges</h3>
-                                </div>
-                                <button @click="addCharge()" class="px-4 py-2 bg-white border border-slate-200 rounded-full text-[11px] font-bold text-brand-dark shadow-sm hover:bg-slate-50 flex items-center">
-                                    + Add Item
-                                </button>
-                            </div>
-                            
-                            <template x-for="(charge, index) in bookingForm.additionalCharges" :key="index">
-                                <div class="flex gap-3 mb-3 items-center">
-                                    <input type="text" class="form-input py-2.5 text-xs flex-1" placeholder="Item spec" x-model="charge.description">
-                                    <div class="relative w-28">
-                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₱</span>
-                                        <input type="number" class="form-input py-2.5 pl-8 pr-2 text-xs font-bold text-slate-700" placeholder="0.00" x-model="charge.amount" @input="calculateTotals()">
-                                    </div>
-                                    <button @click="removeCharge(index)" class="p-2 text-slate-400 hover:text-red-500">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
-                                </div>
-                            </template>
-                        </div>
+                        <button @click.prevent="addSlot()" class="w-full py-4 mb-10 bg-transparent border-2 border-dashed border-slate-200 rounded-2xl text-xs font-bold text-slate-400 hover:border-brand-blue hover:text-brand-blue hover:bg-brand-soft transition-all">+ Add Segment Block Slot</button>
 
                         <div class="mb-8 bg-brand-dark rounded-2xl p-6 flex justify-between items-center shadow-lg">
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Grand Total Payable</label>
-                                <p class="text-[10px] text-white/40 font-medium">Philippine Peso (PHP)</p>
-                            </div>
+                            <div><label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Grand Total Payable</label><p class="text-[10px] text-white/40 font-medium">Philippine Peso (PHP)</p></div>
                             <input type="text" class="bg-transparent text-right text-3xl font-black text-white outline-none w-1/2" x-model="bookingForm.grandTotal" readonly>
                         </div>
 
                         <div class="mb-10 grid grid-cols-1 sm:grid-cols-2 gap-5 bg-brand-soft rounded-2xl p-6 border border-slate-100">
-                            <div>
-                                <label class="form-label">Mode of Payment</label>
-                                <select class="form-input font-bold bg-white" x-model="bookingForm.paymentMode" @change="if(bookingForm.paymentMode === 'Cash') { bookingForm.paymentReference = ''; errors.paymentReference = false; }">
-                                    <option>Cash</option>
-                                    <option>GCash</option>
-                                    <option>Bank Transfer</option>
-                                </select>
-                            </div>
-                            <div x-show="bookingForm.paymentMode !== 'Cash'" x-transition.opacity>
-                                <label class="form-label text-brand-blue">Reference String <span class="text-red-500">*</span></label>
-                                <input type="text" class="form-input font-mono text-brand-blue font-bold tracking-widest bg-white" :class="errors.paymentReference ? '!border-red-400' : ''" placeholder="Transaction ID" x-model="bookingForm.paymentReference" @input="errors.paymentReference = false">
-                            </div>
+                            <div><label class="form-label">Mode of Payment</label><select class="form-input font-bold bg-white" x-model="bookingForm.paymentMode" @change="if(bookingForm.paymentMode === 'Cash') { bookingForm.paymentReference = ''; errors.paymentReference = false; }"><option>Cash</option><option>GCash</option><option>Bank Transfer</option></select></div>
+                            <div x-show="bookingForm.paymentMode !== 'Cash'" x-transition.opacity><label class="form-label text-brand-blue">Reference String <span class="text-red-500">*</span></label><input type="text" class="form-input font-mono text-brand-blue font-bold tracking-widest bg-white" :class="errors.paymentReference ? '!border-red-400' : ''" placeholder="Transaction ID" x-model="bookingForm.paymentReference" @input="errors.paymentReference = false"></div>
                         </div>
 
-                        <button @click="submitBooking()" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-black py-4.5 rounded-full shadow-floating text-md">
-                            Commit Complete Booking Sequence
-                        </button>
+                        <button @click="submitBooking()" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-black py-4.5 rounded-full shadow-floating text-md">Commit Complete Booking Sequence</button>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'pending'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white/95 rounded-2xl shadow-saas border border-white overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-transparent">
-                            <h3 class="font-bold text-sm text-brand-dark">Pending Approvals Action Center</h3>
-                            <button @click="loadMasterList()" class="text-[11px] font-bold uppercase tracking-widest text-brand-blue hover:text-brand-dark transition-colors">Sync</button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-amber-50 text-[9px] font-bold uppercase tracking-widest text-amber-700 border-b border-amber-100">
-                                        <th class="p-4">Customer Name</th>
-                                        <th class="p-4">Requested Reservation</th>
-                                        <th class="p-4">Contact Info</th>
-                                        <th class="p-4 text-center">Action Required</th>
-                                    </tr>
-                                </thead>
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-transparent"><h3 class="font-bold text-sm text-brand-dark">Pending Approvals Action Center</h3><button @click="loadMasterList()" class="text-[11px] font-bold uppercase tracking-widest text-brand-blue hover:text-brand-dark transition-colors">Sync</button></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="bg-amber-50 text-[9px] font-bold uppercase tracking-widest text-amber-700 border-b border-amber-100"><th class="p-4">Customer Name</th><th class="p-4">Contact & Pay Mode</th><th class="p-4">Requested Reservation</th><th class="p-4 text-center">Action Required</th></tr></thead>
                                 <tbody class="divide-y divide-slate-100 text-xs">
-                                    <template x-if="pendingBookings.length === 0">
-                                        <tr><td colspan="4" class="p-12 text-center text-slate-400 font-medium">No pending requests at this time.</td></tr>
-                                    </template>
+                                    <template x-if="pendingBookings.length === 0"><tr><td colspan="4" class="p-12 text-center text-slate-400 font-medium">No pending requests at this time.</td></tr></template>
                                     <template x-for="item in pendingBookings" :key="item.bookingRef">
                                         <tr class="hover:bg-slate-50 transition-colors">
-                                            <td class="p-4 font-bold text-brand-dark">
-                                                <span x-text="item.fullName"></span>
-                                                <span class="block text-[9px] font-bold text-slate-400 mt-0.5 uppercase" x-text="item.organization"></span>
-                                            </td>
-                                            <td class="p-4">
-                                                <span class="inline-block bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded text-[10px] mr-2" x-text="item.facility"></span>
-                                                <span class="text-slate-600 font-medium" x-text="item.date + ' (' + item.timeStart + ' - ' + item.timeEnd + ')'"></span>
-                                            </td>
-                                            <td class="p-4 text-slate-500 font-medium" x-text="item.email"></td>
-                                            <td class="p-4 text-center">
-                                                <button @click="approveBooking(item.bookingRef)" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-[11px] font-bold transition-colors shadow-sm">
-                                                    Approve & Confirm
-                                                </button>
-                                            </td>
+                                            <td class="p-4 font-bold text-brand-dark"><span x-text="item.fullName"></span><span class="block text-[9px] font-bold text-slate-400 mt-0.5 uppercase" x-text="item.organization"></span></td>
+                                            <td class="p-4"><span class="block font-bold text-brand-blue mb-1" x-text="item.contactNumber"></span><span class="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700" x-text="item.paymentMode"></span></td>
+                                            <td class="p-4"><span class="inline-block bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded text-[10px] mr-2" x-text="item.facility"></span><span class="text-slate-600 font-medium" x-text="item.date + ' (' + item.timeStart + ' - ' + item.timeEnd + ')'"></span></td>
+                                            <td class="p-4 text-center"><button @click="initiateApproval(item)" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-full text-[11px] font-bold transition-colors shadow-sm">Approve & Confirm</button></td>
                                         </tr>
                                     </template>
-                                </tbody>
-                            </table>
-                        </div>
+                                </tbody></table></div>
                     </div>
                 </div>
 
                 <div x-show="currentView === 'master-list'" style="display: none;" x-transition.opacity.duration.300ms class="max-w-7xl mx-auto">
                     <div class="bg-white/95 rounded-2xl shadow-saas border border-white overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-transparent">
-                            <h3 class="font-bold text-sm text-brand-dark">Archive Historical Registry</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-brand-soft text-[9px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-200">
-                                        <th class="p-4">Receipt ID</th>
-                                        <th class="p-4">Customer Base</th>
-                                        <th class="p-4">Date Field</th>
-                                        <th class="p-4">Facility Allocation</th>
-                                        <th class="p-4">Time Segment</th>
-                                        <th class="p-4 text-right">Amount (PHP)</th>
-                                    </tr>
-                                </thead>
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-transparent"><h3 class="font-bold text-sm text-brand-dark">Archive Historical Registry</h3></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="bg-brand-soft text-[9px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-200"><th class="p-4">Receipt ID</th><th class="p-4">Customer Base</th><th class="p-4">Date Field</th><th class="p-4">Facility Allocation</th><th class="p-4">Time Segment</th><th class="p-4 text-right">Amount (PHP)</th></tr></thead>
                                 <tbody class="divide-y divide-slate-100 text-xs">
-                                    <template x-if="masterList.length === 0">
-                                        <tr><td colspan="6" class="p-12 text-center text-slate-400 font-medium">Registry stack array empty.</td></tr>
-                                    </template>
+                                    <template x-if="masterList.length === 0"><tr><td colspan="6" class="p-12 text-center text-slate-400 font-medium">Registry stack array empty.</td></tr></template>
                                     <template x-for="item in masterList" :key="item.timestamp">
-                                        <tr class="hover:bg-slate-50/70 transition-colors" :class="item.status === 'Pending' ? 'bg-amber-50/30' : ''">
-                                            <td class="p-4 font-bold tracking-wider" :class="item.status === 'Pending' ? 'text-amber-600' : 'text-brand-blue'" x-text="item.bookingRef || 'BK-OLD'"></td>
-                                            <td class="p-4 font-bold text-brand-dark">
-                                                <span x-text="item.fullName"></span>
-                                                <span class="block text-[9px] font-bold text-slate-400 mt-0.5 uppercase" x-text="item.organization"></span>
-                                            </td>
+                                        <tr class="hover:bg-slate-50/70 transition-colors" :class="item.status === 'Pending' ? 'bg-amber-50/30' : (item.status === 'Expired' ? 'bg-red-50/30 opacity-60' : '')">
+                                            <td class="p-4 font-bold tracking-wider" :class="item.status === 'Pending' ? 'text-amber-600' : (item.status === 'Expired' ? 'text-red-500' : 'text-brand-blue')" x-text="item.bookingRef || 'BK-OLD'"></td>
+                                            <td class="p-4 font-bold text-brand-dark"><span x-text="item.fullName"></span><span class="block text-[9px] font-bold text-slate-400 mt-0.5 uppercase" x-text="item.contactNumber"></span></td>
                                             <td class="p-4 text-slate-600 font-semibold" x-text="item.date"></td>
                                             <td class="p-4"><span class="inline-block bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 rounded-md text-[10px]" x-text="item.facility"></span></td>
-                                            <td class="p-4 text-slate-500 font-medium">
-                                                <span x-text="item.timeStart"></span> - <span x-text="item.timeEnd"></span>
-                                                <template x-if="item.status === 'Pending'"><span class="ml-2 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold">Pending</span></template>
-                                            </td>
+                                            <td class="p-4 text-slate-500 font-medium"><span x-text="item.timeStart"></span> - <span x-text="item.timeEnd"></span><template x-if="item.status === 'Pending'"><span class="ml-2 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold">Pending</span></template><template x-if="item.status === 'Expired'"><span class="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold">Expired</span></template></td>
                                             <td class="p-4 font-black text-brand-dark text-right" x-text="item.grandTotal"></td>
                                         </tr>
                                     </template>
-                                </tbody>
-                            </table>
-                        </div>
+                                </tbody></table></div>
                     </div>
                 </div>
-
             </main>
         </div>
         
-        <div x-show="showReceiptModal" style="display: none;" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-brand-dark/30 backdrop-blur-xs" @click="finishAndRedirect()"></div>
-            <div class="bg-white rounded-[2rem] shadow-2xl z-[100] max-w-sm w-full p-8 transform transition-all" x-transition.scale.origin.bottom>
-                <div class="w-16 h-16 bg-brand-blue text-white rounded-full flex items-center justify-center mb-5 mx-auto shadow-floating">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                </div>
-                <h3 class="text-xl font-black text-center text-brand-dark mb-1 tracking-tight">Saved Securely</h3>
-                <p class="text-center text-slate-400 text-xs mb-8 leading-relaxed">The sheet cache is written and the confirmation email transaction has executed.</p>
+        <div x-show="showReceiptModal" style="display: none;" class="fixed inset-0 z-[90] flex items-center justify-center p-4"><div class="absolute inset-0 bg-brand-dark/30 backdrop-blur-xs" @click="finishAndRedirect()"></div><div class="bg-white rounded-[2rem] shadow-2xl z-[100] max-w-sm w-full p-8 transform transition-all" x-transition.scale.origin.bottom><div class="w-16 h-16 bg-brand-blue text-white rounded-full flex items-center justify-center mb-5 mx-auto shadow-floating"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><h3 class="text-xl font-black text-center text-brand-dark mb-1 tracking-tight">Saved Securely</h3><p class="text-center text-slate-400 text-xs mb-8 leading-relaxed">The sheet cache is written and the confirmation email transaction has executed.</p><div class="flex flex-col space-y-3"><button @click="printAndFinish()" class="w-full bg-brand-dark hover:bg-black text-white text-sm font-bold py-3.5 rounded-full shadow-md transition-all flex justify-center items-center">Print Copy Statement</button><button @click="finishAndRedirect()" class="w-full py-3 text-slate-400 text-xs font-bold hover:bg-slate-50 rounded-full transition-colors">Return to Dashboard</button></div></div></div>
+
+        <!-- NEW APPROVAL PRINT PROMPT MODAL -->
+        <div x-show="showApprovalPrintModal" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" @click="executeApproval(false)" x-transition.opacity></div>
+            <div class="bg-white rounded-[2rem] shadow-2xl z-[110] max-w-sm w-full p-8 transform transition-all text-center" x-transition.scale>
+                <div class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-5 mx-auto shadow-sm"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                <h3 class="text-xl font-black text-brand-dark mb-2">Booking Approved</h3>
+                <p class="text-slate-500 text-sm mb-8 leading-relaxed">The request has been officially verified. Would you like to print the receipt for this booking now?</p>
                 <div class="flex flex-col space-y-3">
-                    <button @click="printAndFinish()" class="w-full bg-brand-dark hover:bg-black text-white text-sm font-bold py-3.5 rounded-full shadow-md transition-all flex justify-center items-center">
-                        Print Copy Statement
-                    </button>
-                    <button @click="finishAndRedirect()" class="w-full py-3 text-slate-400 text-xs font-bold hover:bg-slate-50 rounded-full transition-colors">
-                        Go to Pending Approvals
-                    </button>
+                    <button @click="executeApproval(true)" class="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-bold py-3.5 rounded-xl shadow-floating transition-all">Yes, Print Receipt</button>
+                    <button @click="executeApproval(false)" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl transition-all">Skip & Confirm</button>
                 </div>
             </div>
         </div>
+
     </div>
 
     <div id="print-receipt-wrapper" class="hidden text-black font-sans w-full max-w-[800px] mx-auto">
@@ -1047,102 +530,24 @@
             <div class="flex flex-col min-h-screen">
                 <template x-for="(copyType, i) in ['CUSTOMER COPY', 'ADMINISTRATOR COPY']" :key="copyType">
                     <div class="flex-1 flex flex-col py-8 px-6 bg-white">
-                        <div class="text-center border-b-2 border-black pb-4 mb-4">
-                            <h1 class="text-3xl font-black uppercase tracking-tight">SKILLS Gym Rental</h1>
-                            <p class="text-sm font-semibold uppercase tracking-widest text-gray-600 mt-1">Primary Skills Educational Foundation, Inc.</p>
-                            <p class="text-xs text-gray-500 mt-1">Gen. Maxilom Ave, Cebu City, Philippines</p>
-                            <div class="mt-4 inline-block bg-black text-white px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-sm" x-text="copyType"></div>
-                        </div>
+                        <div class="text-center border-b-2 border-black pb-4 mb-4"><h1 class="text-3xl font-black uppercase tracking-tight">SKILLS Gym Rental</h1><p class="text-sm font-semibold uppercase tracking-widest text-gray-600 mt-1">Primary Skills Educational Foundation, Inc.</p><p class="text-xs text-gray-500 mt-1">Gen. Maxilom Ave, Cebu City, Philippines</p><div class="mt-4 inline-block bg-black text-white px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-sm" x-text="copyType"></div></div>
                         <div class="flex justify-between items-start mb-6 text-sm">
-                            <div>
-                                <p class="text-gray-500 uppercase text-xs font-bold mb-1">Billed To:</p>
-                                <p class="font-bold text-lg" x-text="lastSavedBooking.fullName"></p>
-                                <p x-text="lastSavedBooking.organization || 'Individual'"></p>
-                                <p class="text-gray-500" x-text="lastSavedBooking.email"></p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-gray-500 uppercase text-xs font-bold mb-1">Receipt Ref:</p>
-                                <p class="font-bold text-xl" x-text="lastSavedBooking.refNumber"></p>
-                                <p class="text-gray-500 mt-1" x-text="'Printed: ' + lastSavedBooking.printDate"></p>
-                            </div>
+                            <div><p class="text-gray-500 uppercase text-xs font-bold mb-1">Billed To:</p><p class="font-bold text-lg" x-text="lastSavedBooking.fullName"></p><p class="text-gray-600" x-text="lastSavedBooking.contactNumber"></p></div>
+                            <div class="text-right"><p class="text-gray-500 uppercase text-xs font-bold mb-1">Receipt Ref:</p><p class="font-bold text-xl" x-text="lastSavedBooking.refNumber"></p><p class="text-gray-500 mt-1" x-text="'Printed: ' + lastSavedBooking.printDate"></p></div>
                         </div>
                         <div class="mb-4">
-                            <table class="w-full text-left text-sm border-t border-b border-gray-300">
-                                <thead>
-                                    <tr class="uppercase text-xs text-gray-500 border-b border-gray-200">
-                                        <th class="py-2">Date</th>
-                                        <th class="py-2">Facility / Sport</th>
-                                        <th class="py-2 text-right">Time Slot</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="slot in lastSavedBooking.slots">
-                                        <tr class="border-b border-gray-100 last:border-0">
-                                            <td class="py-2 font-semibold" x-text="slot.date"></td>
-                                            <td class="py-2"><span x-text="slot.court"></span> - <span class="text-gray-500" x-text="slot.sportType"></span></td>
-                                            <td class="py-2 text-right font-semibold"><span x-text="slot.timeStart"></span> to <span x-text="slot.timeEnd"></span></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
+                            <table class="w-full text-left text-sm border-t border-b border-gray-300"><thead><tr class="uppercase text-xs text-gray-500 border-b border-gray-200"><th class="py-2">Date</th><th class="py-2">Facility / Sport</th><th class="py-2 text-right">Time Slot</th></tr></thead>
+                                <tbody><template x-for="slot in lastSavedBooking.slots"><tr class="border-b border-gray-100 last:border-0"><td class="py-2 font-semibold" x-text="slot.date"></td><td class="py-2"><span x-text="slot.court"></span> - <span class="text-gray-500" x-text="slot.sportType"></span></td><td class="py-2 text-right font-semibold"><span x-text="slot.timeStart"></span> to <span x-text="slot.timeEnd"></span></td></tr></template></tbody>
                             </table>
                         </div>
-                        <template x-if="lastSavedBooking.additionalCharges.length > 0">
-                            <div class="mb-6">
-                                <p class="text-xs font-bold uppercase text-gray-500 mb-2">Additional Charges:</p>
-                                <template x-for="charge in lastSavedBooking.additionalCharges">
-                                    <div class="flex justify-between text-sm py-1 border-b border-dashed border-gray-200">
-                                        <span x-text="charge.description"></span>
-                                        <span class="font-semibold" x-text="'PHP ' + parseFloat(charge.amount).toFixed(2)"></span>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-                        <div class="mt-auto flex flex-col items-end pt-4">
-                            <div class="w-1/2">
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span class="text-gray-500">Base Rental:</span>
-                                    <span x-text="'PHP ' + lastSavedBooking.baseAmount"></span>
-                                </div>
-                                <div class="flex justify-between text-sm mb-3 items-end">
-                                    <span class="text-gray-500">Payment Mode:</span>
-                                    <div class="text-right">
-                                        <span class="font-bold uppercase block" x-text="lastSavedBooking.paymentMode"></span>
-                                        <template x-if="lastSavedBooking.paymentMode !== 'Cash' && lastSavedBooking.paymentReference">
-                                            <span class="text-xs text-gray-500 font-mono block mt-0.5" x-text="'Ref: ' + lastSavedBooking.paymentReference"></span>
-                                        </template>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center border-t-2 border-black pt-2">
-                                    <span class="font-bold uppercase tracking-wider">Grand Total</span>
-                                    <span class="text-2xl font-black" x-text="'PHP ' + lastSavedBooking.grandTotal"></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-8 mt-12 pt-8 text-center text-sm">
-                            <div><div class="border-t border-black pt-2">Customer Signature over Printed Name</div></div>
-                            <div>
-                                <div class="font-bold text-lg leading-none mb-1">Anthony Toñacao</div>
-                                <div class="border-t border-black pt-2">Authorized Cashier / Administrator</div>
-                            </div>
-                        </div>
+                        <div class="mt-auto flex flex-col items-end pt-4"><div class="w-1/2"><div class="flex justify-between text-sm mb-3 items-end"><span class="text-gray-500">Payment Mode:</span><div class="text-right"><span class="font-bold uppercase block" x-text="lastSavedBooking.paymentMode"></span><template x-if="lastSavedBooking.paymentMode !== 'Cash' && lastSavedBooking.paymentReference"><span class="text-xs text-gray-500 font-mono block mt-0.5" x-text="'Ref: ' + lastSavedBooking.paymentReference"></span></template></div></div><div class="flex justify-between items-center border-t-2 border-black pt-2"><span class="font-bold uppercase tracking-wider">Grand Total</span><span class="text-2xl font-black" x-text="'PHP ' + lastSavedBooking.grandTotal"></span></div></div></div>
+                        <div class="grid grid-cols-2 gap-8 mt-12 pt-8 text-center text-sm"><div><div class="border-t border-black pt-2">Customer Signature</div></div><div><div class="font-bold text-lg leading-none mb-1">Anthony Toñacao</div><div class="border-t border-black pt-2">Authorized Cashier</div></div></div>
                     </div>
-                    <div x-show="i === 0" class="border-b-2 border-dashed border-gray-400 my-4 flex-shrink-0 relative">
-                        <span class="absolute right-8 -top-3 bg-white px-4 text-xs font-bold uppercase tracking-widest text-gray-400">Fold or Cut Here</span>
-                    </div>
+                    <div x-show="i === 0" class="border-b-2 border-dashed border-gray-400 my-4 flex-shrink-0 relative"><span class="absolute right-8 -top-3 bg-white px-4 text-xs font-bold uppercase tracking-widest text-gray-400">Fold or Cut Here</span></div>
                 </template>
             </div>
         </template>
     </div>
-
-    <div id="toast" class="print:hidden fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300">
-        <div id="icon-bg" class="p-2 rounded-lg mr-4">
-            <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
-        </div>
-        <div>
-            <span id="toast-title" class="block font-bold text-sm"></span>
-            <span id="toast-text" class="block text-xs text-white/80 mt-0.5"></span>
-        </div>
-    </div>
-
+    <div id="toast" class="print:hidden fixed bottom-6 right-6 z-[100] transform translate-y-20 opacity-0 transition-all duration-300"><div id="icon-bg" class="p-2 rounded-lg mr-4"><svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg></div><div><span id="toast-title" class="block font-bold text-sm"></span><span id="toast-text" class="block text-xs text-white/80 mt-0.5"></span></div></div>
 </body>
 </html>
